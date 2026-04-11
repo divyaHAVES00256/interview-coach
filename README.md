@@ -361,4 +361,4 @@ This is a BTech 3rd year portfolio project. Built with guidance from Claude (Ant
 
 ---
 
-*Built by [Your Name] — BTech CSE, [Your College]*
+*Built by DIVYAꨄ — BTech CSE, Netaji Subhas University Of Technology, Delhi*
