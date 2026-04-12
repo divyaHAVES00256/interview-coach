@@ -56,39 +56,44 @@ interview-coach/
 ├── .env                          # All environment variables (never commit this)
 │
 ├── frontend/                     # Next.js 14 application
-│   └── src/
-│       ├── app/
-│       │   ├── (auth)/
-│       │   │   ├── login/
-│       │   │   └── register/
-│       │   ├── (dashboard)/
-│       │   │   ├── dashboard/
-│       │   │   ├── interview/[id]/
-│       │   │   └── results/[id]/
-│       │   ├── test/             # Phase 1 smoke test page (delete after setup)
+│   └── src/                    
+│       ├── app/                  # (the router)
+│       │   ├── (auth)/           ← route group — the () means it's invisible in the URL
+│       │   │   ├── login/        → URL: /login
+│       │   │   └── register/     → URL: /register
+│       │   ├── (dashboard)/      ← another route group
+│       │   │   ├── dashboard/    → URL: /dashboard
+│       │   │   ├── interview/[id]/→ URL: /interview/123  (the [id] is a dynamic segment)
+│       │   │   └── results/[id]/ → URL: /results/123
+│       │   ├── test/             ← Phase 1 smoke test page (delete after setup)
 │       │   ├── layout.js
 │       │   └── page.js
-│       ├── components/
-│       │   ├── ui/               # shadcn/ui components
-│       │   ├── interview/        # Mic recorder, transcript display
-│       │   ├── dashboard/        # Stats cards, history list
-│       │   └── charts/           # Chart.js wrappers
+│       ├── components/           # (reusable UI pieces)
+│       │   ├── ui/               → shadcn/ui components (drops Button, Input, Card etc. here)
+│       │   ├── interview/        → MicRecorder.js, TranscriptDisplay.js, Timer.js
+│       │   ├── dashboard/        → SStatsCard.js, HistoryList.js, SessionRow.js
+│       │   └── charts/           → ScoreChart.js, FillerWordChart.js (Chart.js wrappers)
 │       ├── lib/                  # Utility functions, auth helpers
 │       ├── hooks/                # Custom React hooks
-│       └── services/             # Axios wrappers for API calls
+│       └── services/             # Axios wrappers for API calls (all API calls live here)
+│
 │
 └── backend/                      # FastAPI application
     ├── venv/                     # Python virtual environment (never commit this)
-    ├── main.py                   # FastAPI entry point
+    ├── main.py                   # FastAPI entry point (the front door to wire everything together)
     ├── requirements.txt
     └── app/
         ├── api/
         │   └── v1/
-        │       └── endpoints/    # auth.py, interviews.py, results.py
+        │       └── endpoints/     # (a group of related URL endpoints)
+        │           ├── auth.py        ← POST /auth/register, POST /auth/login, POST /auth/logout
+        │           ├── interviews.py  ← POST /interviews/start, GET /interviews/{id}
+        │           ├── results.py     ← GET /results/{id}, GET /results/history
+        │           └── test.py        ← temporary smoke-test routes (delete after Phase 1)
         ├── core/                 # config.py, security.py
         ├── db/                   # database.py, base.py
-        ├── models/               # SQLAlchemy ORM models
-        ├── schemas/              # Pydantic request/response schemas
+        ├── models/               # SQLAlchemy ORM models (models describe the database table)
+        ├── schemas/              # Pydantic request/response schemas (schemas describe the API request/response)
         ├── services/             # Business logic layer
         ├── tasks/                # Celery task definitions
         │   └── celery_app.py     # Celery instance and config
