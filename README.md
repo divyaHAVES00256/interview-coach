@@ -362,8 +362,4 @@ Thumbs.db
 
 ## Contributing
 
-This is a BTech 3rd year portfolio project. Built with guidance from Claude (Anthropic).
-
----
-
 *Built by DIVYAꨄ — BTech CSE, Netaji Subhas University Of Technology, Delhi*
