@@ -362,8 +362,8 @@ Thumbs.db
 
 ## Contributing
 
-This is a BTech final year portfolio project. Built with guidance from Claude (Anthropic).
+This is a BTech 3rd year portfolio project. Built with guidance from Claude (Anthropic).
 
 ---
 
-*Built by [Your Name] — BTech CSE, [Your College]*
+*Built by DIVYAꨄ — BTech CSE, Netaji Subhas University Of Technology, Delhi*
