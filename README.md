@@ -309,9 +309,9 @@ When the browser calls FastAPI on `:8000` from Next.js on `:3000`, cross-origin 
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                        Browser (:3000)                       │
+│                        Browser (:3000)                      │
 │                                                             │
-│   Submits form → fetch('/api/auth/login')   ← same origin  │
+│   Submits form → fetch('/api/auth/login')   ← same origin   │
 └────────────────────────┬────────────────────────────────────┘
                          │ Same origin (no CORS)
                          ▼
@@ -322,14 +322,14 @@ When the browser calls FastAPI on `:8000` from Next.js on `:3000`, cross-origin 
 │   1. Forwards request to FastAPI                            │
 │   2. Receives { access_token, refresh_token, user }         │
 │   3. Sets httpOnly cookies on :3000 domain                  │
-│   4. Returns only { user } to browser ← token stays hidden │
+│   4. Returns only { user } to browser ← token stays hidden  │
 └────────────────────────┬────────────────────────────────────┘
                          │ Server-to-server (no CORS issues)
                          ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                  FastAPI Backend (:8000)                     │
+│                  FastAPI Backend (:8000)                    │
 │                                                             │
-│   Verifies credentials → returns tokens in response body   │
+│   Verifies credentials → returns tokens in response body    │
 └─────────────────────────────────────────────────────────────┘
 ```
 
