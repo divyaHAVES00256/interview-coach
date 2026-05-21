@@ -637,6 +637,6 @@ Thumbs.db
 
 <div align="center">
 
-Built by DIVYAꨄ — BTech CSE, Netaji Subhas University Of Technology, Delhi
+Built by DIVYAꨄ — BTech CSE, Netaji Subhas University Of Technology, Delhi.
 
 </div>
