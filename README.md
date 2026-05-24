@@ -15,6 +15,10 @@ and receive detailed AI-generated feedback — all running **100% locally**, no 
 ![AI](https://img.shields.io/badge/LLM-Ollama%20%28Local%29-black?style=for-the-badge)
 ![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
 
+<br/>
+
+<img src="./docs/landing_page.png" alt="AI Interview Coach Landing Page" width="800" style="border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);" />
+
 </div>
 
 ---
