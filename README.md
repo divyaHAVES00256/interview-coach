@@ -184,37 +184,37 @@ alembic history           # full audit trail of every change
 │                        BROWSER (:3000)                              │
 │  Next.js 14 App Router · Tailwind CSS · shadcn/ui · Web Audio API   │
 │                                                                     │
-│  MediaRecorder ──→ binary audio chunks ──→ WebSocket ───────────┐  │
-│  fetch('/api/v1/...') ──→ BFF proxy ──────────────────────────┐ │  │
-└──────────────────────────────────────────────────────────────── │─│─┘
-                                                                   │ │
-                    same-origin (no CORS)                          │ │ ws://
-                                                                   ↓ │
-┌──────────────────────────────────────────────────────────────────── │─┐
-│                   NEXT.JS BFF LAYER (:3000)                        │  │
-│  Reads httpOnly cookie → injects Authorization header              │  │
-│  Proxies all /api/v1/* requests to FastAPI transparently           │  │
-└──────────────────────────────────────────────────────────────────── │─┘
-                                                                       │
-                    server-to-server HTTP                              │
-                                                                       ↓
+│  MediaRecorder ──→ binary audio chunks ──→ WebSocket ───────────┐   │
+│  fetch('/api/v1/...') ──→ BFF proxy ──────────────────────────┐ │   │
+└──────────────────────────────────────────────────────────────── │──│┘
+                                                                  │  │
+                    same-origin (no CORS)                         │  │ ws://
+                                                                  ↓  │
+┌────────────────────────────────────────────────────────────────────│─┐
+│                   NEXT.JS BFF LAYER (:3000)                        │ │
+│  Reads httpOnly cookie → injects Authorization header              │ │
+│  Proxies all /api/v1/* requests to FastAPI transparently           │ │
+└────────────────────────────────────────────────────────────────────│─┘
+                                                                     │
+                    server-to-server HTTP                            │
+                                                                     ↓
 ┌─────────────────────────────────────────────────────────────────────┐
 │                    FASTAPI BACKEND (:8000)                          │
 │                                                                     │
-│  POST /api/v1/auth/*        JWT · bcrypt · refresh tokens          │
+│  POST /api/v1/auth/*        JWT · bcrypt · refresh tokens           │
 │  GET|POST|PATCH /api/v1/interviews/*   Session lifecycle            │
-│  WS /ws/interview/{id}      Binary audio → transcription           │
+│  WS /ws/interview/{id}      Binary audio → transcription            │
 │                                                                     │
 │  Celery tasks (async)           SQLAlchemy ORM + Alembic            │
-│  ┌──────────────────┐          ┌───────────────────────┐           │
+│  ┌──────────────────┐          ┌───────────────────────┐            │
 │  │  Redis Broker    │          │  PostgreSQL            │           │
 │  │  Result Backend  │          │  5 tables, versioned   │           │
-│  └──────────────────┘          └───────────────────────┘           │
+│  └──────────────────┘          └───────────────────────┘            │
 │                                                                     │
-│  ┌──────────────┐  ┌──────────────┐  ┌───────┐  ┌──────────────┐  │
-│  │faster-whisper│  │Ollama llama3 │  │ vosk  │  │ FAISS index  │  │
-│  │  (CPU, int8) │  │  (local LLM) │  │(local)│  │  (in-proc)   │  │
-│  └──────────────┘  └──────────────┘  └───────┘  └──────────────┘  │
+│  ┌──────────────┐  ┌──────────────┐  ┌───────┐  ┌──────────────┐    │
+│  │faster-whisper│  │Ollama llama3 │  │ vosk  │  │ FAISS index  │    │
+│  │  (CPU, int8) │  │  (local LLM) │  │(local)│  │  (in-proc)   │    │
+│  └──────────────┘  └──────────────┘  └───────┘  └──────────────┘    │
 │          ↑ all local · all free · all offline-capable ↑             │
 └─────────────────────────────────────────────────────────────────────┘
 ```
