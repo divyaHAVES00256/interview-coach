@@ -7,6 +7,7 @@
 
 async function authFetch(endpoint, options = {}) {
   const response = await fetch(endpoint, {
+    credentials: "same-origin",
     ...options,
     headers: {
       "Content-Type": "application/json",

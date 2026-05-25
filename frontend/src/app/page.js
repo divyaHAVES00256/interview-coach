@@ -169,9 +169,9 @@ export default function Home() {
         </nav>
 
         {/* ══ HERO ═════════════════════════════════════════════════════════ */}
-        <section style={{minHeight:'100vh',display:'flex',flexDirection:'column',
+        <section style={{display:'flex',flexDirection:'column',
           alignItems:'center',justifyContent:'center',textAlign:'center',
-          padding:'100px 24px 60px',position:'relative'}}>
+          padding:'100px 24px 60px',position:'relative',minHeight:'auto'}}>
 
           {/* Status badge */}
           <div className="fi1" style={{marginBottom:24}}>

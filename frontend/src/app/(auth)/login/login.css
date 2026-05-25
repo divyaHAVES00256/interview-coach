@@ -1,0 +1,301 @@
+/* ============================================================
+   login.css  —  AI Interview Coach · Login Page
+   Import order: auth-shared.css FIRST, then this file
+   All layout classes use log-* prefix
+   ============================================================ */
+
+/* ── Root layout ───────────────────────────────────────────── */
+.log-root {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  min-height: 100vh;
+  position: relative;
+  overflow: hidden;
+}
+
+/* ── Left brand panel ──────────────────────────────────────── */
+.log-brand {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 48px 56px;
+  background: linear-gradient(
+    160deg,
+    rgba(0, 212, 170, 0.06) 0%,
+    rgba(2, 11, 14, 0) 60%
+  );
+  border-right: 1px solid var(--border);
+  overflow: hidden;
+  z-index: 1;
+}
+
+/* Decorative corner accent */
+.log-brand::after {
+  content: "";
+  position: absolute;
+  top: -120px;
+  left: -120px;
+  width: 360px;
+  height: 360px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(0, 212, 170, 0.09) 0%,
+    transparent 70%
+  );
+  pointer-events: none;
+}
+
+/* ── Brand top section ─────────────────────────────────────── */
+.log-brand-top {
+  position: relative;
+  z-index: 2;
+}
+
+/* ── Brand headline ────────────────────────────────────────── */
+.log-headline {
+  margin-top: 64px;
+  position: relative;
+  z-index: 2;
+}
+
+.log-headline-text {
+  font-family: var(--font-syne);
+  font-size: clamp(2.1rem, 3.2vw, 3rem);
+  font-weight: 800;
+  line-height: 1.12;
+  letter-spacing: -0.03em;
+  color: var(--text);
+  margin: 0 0 20px;
+}
+
+.log-headline-text span {
+  /* Shimmer handled by auth-shared .auth-shimmer — reuse pattern */
+  background: linear-gradient(
+    90deg,
+    var(--accent) 0%,
+    var(--green) 40%,
+    var(--accent) 80%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: log-shimmer 3.5s linear infinite;
+}
+
+@keyframes log-shimmer {
+  0%   { background-position: 0% center; }
+  100% { background-position: 200% center; }
+}
+
+.log-headline-sub {
+  font-family: var(--font-dm);
+  font-size: 1.05rem;
+  color: var(--muted-light);
+  line-height: 1.6;
+  max-width: 340px;
+}
+
+/* ── Stat pills row ────────────────────────────────────────── */
+.log-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 40px;
+  position: relative;
+  z-index: 2;
+}
+
+.log-stat-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 18px;
+  background: rgba(0, 212, 170, 0.05);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  width: fit-content;
+  transition: border-color 0.25s, background 0.25s;
+}
+
+.log-stat-pill:hover {
+  border-color: var(--bord-hov);
+  background: rgba(0, 212, 170, 0.09);
+}
+
+.log-stat-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 8px rgba(0, 212, 170, 0.7);
+  flex-shrink: 0;
+  animation: log-pulse 2.4s ease-in-out infinite;
+}
+
+.log-stat-pill:nth-child(2) .log-stat-dot {
+  background: var(--green);
+  box-shadow: 0 0 8px rgba(0, 255, 135, 0.7);
+  animation-delay: 0.4s;
+}
+
+.log-stat-pill:nth-child(3) .log-stat-dot {
+  background: var(--orange);
+  box-shadow: 0 0 8px rgba(255, 123, 69, 0.7);
+  animation-delay: 0.8s;
+}
+
+@keyframes log-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.5; transform: scale(0.75); }
+}
+
+.log-stat-label {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--text);
+  letter-spacing: 0.04em;
+}
+
+/* ── Waveform visualizer ───────────────────────────────────── */
+.log-wave-wrap {
+  position: relative;
+  z-index: 2;
+  padding-top: 32px;
+}
+
+.log-wave-label {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 14px;
+}
+
+.log-wave {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 52px;
+}
+
+.log-wave-bar {
+  width: 3px;
+  border-radius: 2px 2px 0 0;
+  background: linear-gradient(180deg, var(--accent) 0%, rgba(0, 212, 170, 0.25) 100%);
+  animation: log-wave-anim var(--dur, 1.2s) ease-in-out infinite alternate;
+  animation-delay: var(--delay, 0s);
+  transform-origin: bottom;
+}
+
+/* Deterministic heights — no Math.random */
+.log-wave-bar:nth-child(1)  { --h: 18px; --dur: 1.10s; --delay: 0.00s; }
+.log-wave-bar:nth-child(2)  { --h: 30px; --dur: 0.95s; --delay: 0.08s; }
+.log-wave-bar:nth-child(3)  { --h: 44px; --dur: 1.25s; --delay: 0.16s; }
+.log-wave-bar:nth-child(4)  { --h: 36px; --dur: 1.05s; --delay: 0.24s; }
+.log-wave-bar:nth-child(5)  { --h: 52px; --dur: 0.88s; --delay: 0.32s; }
+.log-wave-bar:nth-child(6)  { --h: 28px; --dur: 1.18s; --delay: 0.40s; }
+.log-wave-bar:nth-child(7)  { --h: 42px; --dur: 0.92s; --delay: 0.48s; }
+.log-wave-bar:nth-child(8)  { --h: 20px; --dur: 1.30s; --delay: 0.56s; }
+.log-wave-bar:nth-child(9)  { --h: 38px; --dur: 1.00s; --delay: 0.64s; }
+.log-wave-bar:nth-child(10) { --h: 48px; --dur: 0.85s; --delay: 0.72s; }
+.log-wave-bar:nth-child(11) { --h: 24px; --dur: 1.22s; --delay: 0.80s; }
+.log-wave-bar:nth-child(12) { --h: 40px; --dur: 0.98s; --delay: 0.88s; }
+.log-wave-bar:nth-child(13) { --h: 32px; --dur: 1.14s; --delay: 0.96s; }
+.log-wave-bar:nth-child(14) { --h: 50px; --dur: 0.90s; --delay: 1.04s; }
+.log-wave-bar:nth-child(15) { --h: 22px; --dur: 1.28s; --delay: 1.12s; }
+.log-wave-bar:nth-child(16) { --h: 34px; --dur: 1.06s; --delay: 1.20s; }
+.log-wave-bar:nth-child(17) { --h: 46px; --dur: 0.87s; --delay: 1.28s; }
+.log-wave-bar:nth-child(18) { --h: 26px; --dur: 1.16s; --delay: 1.36s; }
+.log-wave-bar:nth-child(19) { --h: 38px; --dur: 1.02s; --delay: 1.44s; }
+.log-wave-bar:nth-child(20) { --h: 16px; --dur: 1.32s; --delay: 1.52s; }
+
+@keyframes log-wave-anim {
+  from { height: calc(var(--h) * 0.3); opacity: 0.4; }
+  to   { height: var(--h);             opacity: 1;   }
+}
+
+/* ── Right form panel ──────────────────────────────────────── */
+.log-form-panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 40px;
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Form card ─────────────────────────────────────────────── */
+.log-card {
+  width: 100%;
+  max-width: 420px;
+}
+
+/* ── Welcome-back greeting ─────────────────────────────────── */
+.log-greeting {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 6px;
+  opacity: 0;
+  animation: log-fi-fade 0.5s ease forwards;
+  animation-delay: 0.05s;
+}
+
+/* ── Forgot-password link ──────────────────────────────────── */
+.log-forgot {
+  font-family: var(--font-dm);
+  font-size: 0.8rem;
+  color: var(--muted-light);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.log-forgot:hover {
+  color: var(--accent);
+}
+
+/* Label row: label left, forgot-password right */
+.log-label-row-pw {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* ── Stagger fade-in for form elements ─────────────────────── */
+@keyframes log-fi-fade {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.log-fi-1 { opacity: 0; animation: log-fi-fade 0.55s ease forwards; animation-delay: 0.00s; }
+.log-fi-2 { opacity: 0; animation: log-fi-fade 0.55s ease forwards; animation-delay: 0.10s; }
+.log-fi-3 { opacity: 0; animation: log-fi-fade 0.55s ease forwards; animation-delay: 0.20s; }
+.log-fi-4 { opacity: 0; animation: log-fi-fade 0.55s ease forwards; animation-delay: 0.30s; }
+.log-fi-5 { opacity: 0; animation: log-fi-fade 0.55s ease forwards; animation-delay: 0.42s; }
+
+/* ── Responsive: collapse to single column on mobile ───────── */
+@media (max-width: 768px) {
+  .log-root {
+    grid-template-columns: 1fr;
+  }
+
+  .log-brand {
+    display: none; /* hide brand panel on mobile */
+  }
+
+  .log-form-panel {
+    padding: 32px 20px;
+    align-items: flex-start;
+    padding-top: 64px;
+  }
+
+  .log-card {
+    max-width: 100%;
+  }
+}
