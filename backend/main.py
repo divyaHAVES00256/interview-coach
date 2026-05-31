@@ -1,6 +1,5 @@
 # main.py — FastAPI application entry point.
-# CHANGES from Phase 2: Added auth router registration.
-# CHANGES from Phase 4: Added custom OpenAPI schema for Swagger Authorize button.
+# All routers are registered here with their URL prefixes.
 
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
@@ -10,9 +9,13 @@ from fastapi.openapi.utils import get_openapi
 from app.core.config import get_settings
 from app.db.database import engine
 from app.models import Base
+
+# Routers 
 from app.api.v1.endpoints import auth
 from app.api.v1.endpoints import interviews
 from app.api.v1.endpoints import websocket
+from app.api.v1.endpoints import answers
+from app.api.v1.endpoints import results
 
 settings = get_settings()
 
@@ -29,10 +32,11 @@ async def lifespan(app: FastAPI):
 
     print("🔄 Shutting down...")
 
-
+# app instances
 app = FastAPI(
     title=settings.APP_NAME,
     debug=settings.DEBUG,
+    description=settings.DESC,
     lifespan=lifespan,
 )
 
@@ -64,10 +68,8 @@ def custom_openapi():
     return app.openapi_schema
 
 app.openapi = custom_openapi  # Override FastAPI's default schema builder
-# ─────────────────────────────────────────────────────────────────────────────
 
-
-# ── CORS ──────────────────────────────────────────────────────────────────────
+# CORS 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000"],
@@ -77,7 +79,7 @@ app.add_middleware(
 )
 
 
-# ── ROUTERS ───────────────────────────────────────────────────────────────────
+# ROUTERS
 app.include_router(
     auth.router,
     prefix="/api/v1/auth",
@@ -89,13 +91,23 @@ app.include_router(
     tags=["Interviews"],
 )
 app.include_router(
+    answers.router,
+    prefix="/api/v1/answers",
+    tags=["Answers"],
+)
+app.include_router(
+    results.router,
+    prefix="/api/v1/results",
+    tags=["Results"],
+)
+app.include_router(
     websocket.router,
     prefix="/ws",
     tags=["WebSocket"],
 )
 
 
-# ── Health Check ──────────────────────────────────────────────────────────────
+# Health Check 
 @app.get("/api/v1/health")
 async def health_check() -> dict[str, str]:
     return {"status": "ok", "app": settings.APP_NAME}

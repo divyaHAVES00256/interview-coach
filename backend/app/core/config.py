@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     # app
     APP_NAME: str = "AI Interview Coach API"
     APP_ENV: str = "development"
+    DESC: str = "Local AI-powered interview preparation platform"
+
     DEBUG: bool = True
 
     # db

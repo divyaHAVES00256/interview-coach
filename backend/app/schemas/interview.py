@@ -1,8 +1,8 @@
 # backend/app/schemas/interview.py
 # Pydantic v2 schemas for interview session data validation
-# validate incoming requests and shape outgoing responses.
+# validate incoming requests and shape outgoing responses
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional
 from datetime import datetime
 from enum import Enum
@@ -13,9 +13,18 @@ class DifficultyLevel(str, Enum):
     medium = "medium"
     hard = "hard"
 
+# ── Question schemas ────────────────────────────────────────
+class QuestionResponse(BaseModel):
+    """Returned as part of a session — tells the frontend what to display."""
+    id: int
+    question_text: str
+    order_index: int
+    question_type: str
+    is_follow_up: bool
+
+    model_config = ConfigDict(from_attributes=True)
 
 # ── Request schemas (client → server) ────────────────────────────────────────
-
 class InterviewStartRequest(BaseModel):
     domain: str = Field(
         ...,
@@ -31,7 +40,6 @@ class InterviewStartRequest(BaseModel):
 
 
 # ── Response schemas (server → client) ───────────────────────────────────────
-
 class InterviewSessionResponse(BaseModel):
     id: int
     user_id: int
@@ -41,12 +49,16 @@ class InterviewSessionResponse(BaseModel):
     status: str
     started_at: Optional[datetime]
     ended_at: Optional[datetime]
+    questions: list[QuestionResponse] = []
 
     model_config = {"from_attributes": True}
 
+class EndInterviewRequest(BaseModel):
+    """Optional body for PATCH /{id}/end — nothing required for now."""
+    pass 
+
 
 # ── WebSocket message schemas (server → client) ───────────────────────────────
-
 class WSTranscriptMessage(BaseModel):
     type: str = "transcript"
     text: str                       # transcribed speech text
@@ -63,4 +75,6 @@ class WSStatusMessage(BaseModel):
 class WSErrorMessage(BaseModel):
     type: str = "error"
     code: str                       
-    message: str                    
+    message: str   
+
+                

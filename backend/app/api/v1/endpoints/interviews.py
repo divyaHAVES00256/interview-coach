@@ -4,16 +4,23 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone
+from typing import Any
 
 from app.db.database import get_db
 from app.dependencies import get_current_user
 from app.models.user import User 
 from app.models.interview_session import InterviewSession
-
-from app.schemas.interview import InterviewStartRequest, InterviewSessionResponse
+from app.models.question import Question
+from app.schemas.interview import (
+    EndInterviewRequest,
+    InterviewSessionResponse,
+    InterviewStartRequest,
+)
+from app.services.question_bank import get_questions_for_session
 
 router = APIRouter()
 
+# POST /api/v1/interviews/start
 @router.post(
     "/start",
     response_model=InterviewSessionResponse,
@@ -23,8 +30,8 @@ def start_interview(
     body: InterviewStartRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
-    # Create a new InterviewSession row 
+) -> Any:
+    #step 1: Create a new InterviewSession AND pre-populate its questions
     session = InterviewSession(
         user_id=current_user.id,
         domain=body.domain,
@@ -35,17 +42,58 @@ def start_interview(
     )
     # Add sesion to db
     db.add(session)
+    db.flush() # writes to DB, generates session.id, stays in transaction
+
+    # Step 2: fetch questions from the bank
+    raw_questions = get_questions_for_session(
+        domain=body.domain,
+        difficulty=body.difficulty,
+        count=5,
+    )
+
+    if not raw_questions:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Could not load questions for this domain. Please try again.",
+        )
+    
+    # Step 3: create Question ORM objects
+    question_objs: list[Question] = []
+    for index, q in enumerate(raw_questions):
+        question_obj = Question(
+            session_id=session.id,
+            question_text=q["text"],
+            question_type=q["type"],
+            order_index=index,       # 0-based ordering
+            is_follow_up=False,      # Phase 5 — follow-ups come in Phase 6
+        )
+        db.add(question_obj)
+        question_objs.append(question_obj)
+
+    # Step 4: commit everything atomically
     db.commit()
-    db.refresh(session)  
+
+    # Step 5: refresh so ORM loads the auto-generated Question ids
+    db.refresh(session)
+    for q_obj in question_objs:
+        db.refresh(q_obj)
+
+    session.questions = question_objs
+
     return session
 
 
-@router.get("/{session_id}", response_model=InterviewSessionResponse)
+# GET /api/v1/interviews/{session_id}
+@router.get(
+    "/{session_id}", 
+    response_model=InterviewSessionResponse
+)
 def get_interview(
     session_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     
     # Fetch a session by ID
     session = (
@@ -63,15 +111,28 @@ def get_interview(
             detail="Session not found or does not belong to you",
         )
 
+    # Eagerly load questions so the response_model can serialize them
+    questions = (
+        db.query(Question)
+        .filter(Question.session_id == session_id)
+        .order_by(Question.order_index)
+        .all()
+    )
+    session.questions = questions
+
     return session
 
-
-@router.patch("/{session_id}/end", response_model=InterviewSessionResponse)
+# PATCH /api/v1/interviews/{session_id}/end
+@router.patch(
+    "/{session_id}/end", 
+    response_model=InterviewSessionResponse
+)
 def end_interview(
     session_id: int,
+    body: EndInterviewRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     
     # Mark the session as completed 
     session = (
@@ -86,16 +147,28 @@ def end_interview(
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
 
-    # Guard against ending a session that's already done
-    if session.status != "in_progress":
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Cannot end a session with status '{session.status}'. "
-                   "Only 'in_progress' sessions can be ended.",
+     # Idempotent — ending an already-ended session is fine: earlier we raised error of "Already completed"
+    if session.status == "completed":
+        questions = (
+            db.query(Question)
+            .filter(Question.session_id == session_id)
+            .order_by(Question.order_index)
+            .all()
         )
+        session.questions = questions
+        return session
 
     session.status = "completed"
     session.ended_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(session)
+
+    questions = (
+        db.query(Question)
+        .filter(Question.session_id == session_id)
+        .order_by(Question.order_index)
+        .all()
+    )
+    session.questions = questions
+
     return session

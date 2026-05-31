@@ -11,21 +11,19 @@ in separate files (transcription.py, feedback.py) in Phase 3+.
 import os
 from celery import Celery
 from dotenv import load_dotenv
+from app.core.config import get_settings
 
 load_dotenv()  # reads your .env file so we can use os.getenv()
+
+settings = get_settings()
 
 # The first argument is just a name for this Celery app — use your project name.
 # broker = where tasks are sent (Redis queue)
 # backend = where task results are stored (also Redis)
 celery_app = Celery(
     "interview_coach",
-    broker=os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0"),
-    backend=os.getenv("CELERY_RESULT_BACKEND", "redis://localhost:6379/0"),
-    include=[
-        # We'll add task modules here as we build them, e.g.:
-        # "app.tasks.transcription",
-        # "app.tasks.feedback",
-    ]
+    broker=settings.REDIS_URL,
+    backend=settings.REDIS_URL,
 )
 
 # Optional Celery settings
@@ -38,3 +36,8 @@ celery_app.conf.update(
     # How long to keep task results in Redis (1 hour)
     result_expires=3600,
 )
+
+#autodiscover_tasks is unreliable on Windows when tasks are in submodules
+#hence explicitly import task modules so Celery registers them on startup
+# celery_app.autodiscover_tasks(["app.tasks"]) 
+import app.tasks.scoring_task 
