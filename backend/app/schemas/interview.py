@@ -56,6 +56,18 @@ class InterviewSessionResponse(BaseModel):
 class EndInterviewRequest(BaseModel):
     """Optional body for PATCH /{id}/end — nothing required for now."""
     pass 
+ 
+class SessionListItem(BaseModel):
+    """
+    Lightweight summary returned by GET /api/v1/interviews.
+    Used by the dashboard recent-sessions list and stats
+    """
+    id: int
+    domain: str
+    difficulty: str
+    status: str
+    started_at: Optional[datetime]
+    overall_score: Optional[float]
 
 
 # ── WebSocket message schemas (server → client) ───────────────────────────────

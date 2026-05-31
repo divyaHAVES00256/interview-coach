@@ -28,7 +28,7 @@ export async function startInterview({ domain, companyMode = null, difficulty = 
 }
 
 /**
- * Fetch session details by ID.
+ * Fetch single session details by ID.
  * @param {number} sessionId
  */
 export async function getInterview(sessionId) {
@@ -56,6 +56,17 @@ export async function endInterview(sessionId) {
     throw new Error(err.detail || 'Failed to end session')
   }
 
+  return res.json()
+}
+
+/**
+ * List all sessions for current user
+ */
+export async function listInterviews() {
+  const res = await fetch(`${BASE}`, {
+    credentials: 'include',
+  })
+  if (!res.ok) throw new Error(await res.text())
   return res.json()
 }
 

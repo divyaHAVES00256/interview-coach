@@ -129,7 +129,6 @@
   z-index: 10;
 }
 
-/* Logo */
 .dash-logo {
   display: flex;
   align-items: center;
@@ -158,14 +157,12 @@
   letter-spacing: 0.01em;
 }
 
-/* Nav right cluster */
 .dash-nav-right {
   display: flex;
   align-items: center;
   gap: 16px;
 }
 
-/* "New Interview" CTA */
 .dash-nav-cta {
   display: flex;
   align-items: center;
@@ -189,7 +186,6 @@
   transform: translateY(-1px);
 }
 
-/* User avatar chip */
 .dash-user-chip {
   display: flex;
   align-items: center;
@@ -222,7 +218,6 @@
   color: var(--text);
 }
 
-/* Logout button */
 .dash-logout-btn {
   display: flex;
   align-items: center;
@@ -245,10 +240,6 @@
   transform: translateY(-2px);
 }
 
-.dash-logout-btn:active:not(:disabled) {
-  transform: translateY(0);
-}
-
 .dash-logout-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
@@ -266,7 +257,6 @@
   gap: 40px;
 }
 
-/* ── Stagger fade-in animations ───────────────────────────── */
 @keyframes dash-fi {
   from { opacity: 0; transform: translateY(16px); }
   to   { opacity: 1; transform: translateY(0); }
@@ -337,9 +327,7 @@
 .dash-quickstart::before {
   content: "";
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
+  top: 0; left: 0; right: 0;
   height: 1px;
   background: linear-gradient(90deg, transparent, rgba(0, 212, 170, 0.5), transparent);
 }
@@ -383,7 +371,6 @@
   margin-top: 2px;
 }
 
-/* Selectors row */
 .dash-selectors {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -434,7 +421,6 @@
   text-transform: capitalize;
 }
 
-/* Difficulty pill toggle */
 .dash-difficulty-pills {
   display: flex;
   gap: 8px;
@@ -468,10 +454,9 @@
   box-shadow: 0 0 12px rgba(0, 212, 170, 0.15);
 }
 
-.dash-pill-easy.dash-pill-active    { --p-color: var(--green);  border-color: var(--green)  !important; color: var(--green)  !important; background: rgba(0,255,135,0.08) !important; box-shadow: 0 0 12px rgba(0,255,135,0.15); }
-.dash-pill-hard.dash-pill-active    { --p-color: var(--orange); border-color: var(--orange) !important; color: var(--orange) !important; background: rgba(255,123,69,0.08) !important; box-shadow: 0 0 12px rgba(255,123,69,0.15); }
+.dash-pill-easy.dash-pill-active  { border-color: var(--green)  !important; color: var(--green)  !important; background: rgba(0,255,135,0.08) !important; box-shadow: 0 0 12px rgba(0,255,135,0.15); }
+.dash-pill-hard.dash-pill-active  { border-color: var(--orange) !important; color: var(--orange) !important; background: rgba(255,123,69,0.08) !important; box-shadow: 0 0 12px rgba(255,123,69,0.15); }
 
-/* Error */
 .dash-error {
   display: flex;
   align-items: center;
@@ -494,7 +479,6 @@
   flex-shrink: 0;
 }
 
-/* Start button */
 .dash-start-btn {
   width: 100%;
   display: flex;
@@ -538,12 +522,8 @@
 }
 
 .dash-start-btn span,
-.dash-start-btn svg {
-  position: relative;
-  z-index: 1;
-}
+.dash-start-btn svg { position: relative; z-index: 1; }
 
-/* Spinner */
 .dash-spinner {
   width: 16px;
   height: 16px;
@@ -554,9 +534,7 @@
   flex-shrink: 0;
 }
 
-@keyframes dash-spin {
-  to { transform: rotate(360deg); }
-}
+@keyframes dash-spin { to { transform: rotate(360deg); } }
 
 /* ════════════════════════════════════════════════════════════
    STATS ROW
@@ -625,6 +603,7 @@
   letter-spacing: -0.04em;
   line-height: 1;
   margin-bottom: 4px;
+  transition: color 0.3s;
 }
 
 .dash-stat-label {
@@ -640,6 +619,27 @@
   font-size: 0.75rem;
   color: var(--muted);
   margin-top: 6px;
+}
+
+/* Skeleton shimmer for stat values while loading */
+.dash-stat-skeleton {
+  width: 52px;
+  height: 32px;
+  border-radius: 8px;
+  background: linear-gradient(
+    90deg,
+    rgba(0, 212, 170, 0.06) 0%,
+    rgba(0, 212, 170, 0.12) 50%,
+    rgba(0, 212, 170, 0.06) 100%
+  );
+  background-size: 200% 100%;
+  animation: dash-shimmer-bg 1.4s ease infinite;
+  margin-bottom: 4px;
+}
+
+@keyframes dash-shimmer-bg {
+  0%   { background-position: 200% center; }
+  100% { background-position: -200% center; }
 }
 
 /* ════════════════════════════════════════════════════════════
@@ -746,37 +746,179 @@
   line-height: 1.6;
 }
 
+/* ════════════════════════════════════════════════════════════
+   SESSION ROWS — new in dashboard update
+════════════════════════════════════════════════════════════ */
+
+/* One session = one row in the list */
+.dash-session-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 28px;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.2s ease;
+}
+
+.dash-session-row:last-child {
+  border-bottom: none;
+}
+
+.dash-session-row:hover {
+  background: rgba(0, 212, 170, 0.03);
+}
+
+/* Left cluster: status dot + domain + difficulty badge + date */
+.dash-session-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* Coloured dot showing session status */
+.dash-session-status {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.dash-session-status-completed {
+  background: var(--green);
+  box-shadow: 0 0 6px rgba(0, 255, 135, 0.55);
+}
+
+.dash-session-status-in_progress {
+  background: var(--orange);
+  box-shadow: 0 0 6px rgba(255, 123, 69, 0.55);
+  animation: dash-status-pulse 1.6s ease-in-out infinite;
+}
+
+.dash-session-status-pending,
+.dash-session-status-abandoned {
+  background: var(--muted);
+}
+
+@keyframes dash-status-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.35; }
+}
+
+/* Domain name */
+.dash-session-domain {
+  font-family: var(--font-syne);
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--text);
+  text-transform: capitalize;
+  letter-spacing: 0.01em;
+}
+
+/* Difficulty pill */
+.dash-session-diff {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: 6px;
+  border: 1px solid;
+}
+
+.dash-session-diff-easy {
+  color: var(--green);
+  border-color: rgba(0, 255, 135, 0.3);
+  background: rgba(0, 255, 135, 0.07);
+}
+
+.dash-session-diff-medium {
+  color: var(--accent);
+  border-color: rgba(0, 212, 170, 0.3);
+  background: rgba(0, 212, 170, 0.07);
+}
+
+.dash-session-diff-hard {
+  color: var(--orange);
+  border-color: rgba(255, 123, 69, 0.3);
+  background: rgba(255, 123, 69, 0.07);
+}
+
+/* Relative date */
+.dash-session-date {
+  font-family: var(--font-dm);
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+/* Right cluster: score */
+.dash-session-right {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* Numeric score (colour applied inline based on value) */
+.dash-session-score {
+  font-family: var(--font-syne);
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  transition: color 0.3s;
+}
+
+.dash-session-score-denom {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 400;
+  color: var(--muted);
+  margin-left: 2px;
+  letter-spacing: 0;
+}
+
+/* Shown when no score yet */
+.dash-session-score-null {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* ════════════════════════════════════════════════════════════
+   SKELETON ROWS — shown while sessions are loading
+════════════════════════════════════════════════════════════ */
+
+.dash-skel {
+  border-radius: 6px;
+  background: linear-gradient(
+    90deg,
+    rgba(0, 212, 170, 0.05) 0%,
+    rgba(0, 212, 170, 0.1) 50%,
+    rgba(0, 212, 170, 0.05) 100%
+  );
+  background-size: 200% 100%;
+  animation: dash-shimmer-bg 1.4s ease infinite;
+}
+
+.dash-skel-domain { width: 72px;  height: 14px; }
+.dash-skel-badge  { width: 44px;  height: 18px; border-radius: 6px; }
+.dash-skel-date   { width: 52px;  height: 12px; }
+.dash-skel-score  { width: 36px;  height: 20px; }
+
 /* ── Responsive ───────────────────────────────────────────── */
 @media (max-width: 860px) {
-  .dash-nav {
-    padding: 0 20px;
-  }
-
-  .dash-content {
-    padding: 36px 20px 60px;
-    gap: 28px;
-  }
-
-  .dash-selectors {
-    grid-template-columns: 1fr;
-  }
-
-  .dash-stats-row {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-
-  .dash-user-name {
-    display: none;
-  }
+  .dash-nav     { padding: 0 20px; }
+  .dash-content { padding: 36px 20px 60px; gap: 28px; }
+  .dash-selectors     { grid-template-columns: 1fr; }
+  .dash-stats-row     { grid-template-columns: 1fr; gap: 12px; }
+  .dash-user-name     { display: none; }
+  .dash-session-row   { padding: 14px 20px; }
+  .dash-session-date  { display: none; }
 }
 
 @media (max-width: 520px) {
-  .dash-nav-cta span {
-    display: none;
-  }
-
-  .dash-quickstart {
-    padding: 24px 20px;
-  }
+  .dash-nav-cta span  { display: none; }
+  .dash-quickstart    { padding: 24px 20px; }
+  .dash-sessions-header { padding: 18px 20px; }
 }
