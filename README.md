@@ -9,7 +9,7 @@ and receive detailed AI-generated feedback — all running **100% locally**, no 
 
 <br/>
 
-![Phase](https://img.shields.io/badge/Phase-4%20Complete-success?style=for-the-badge&logo=checkmarx)
+![Phase](https://img.shields.io/badge/Phase-5%20Complete-success?style=for-the-badge&logo=checkmarx)
 ![Stack](https://img.shields.io/badge/Stack-Next.js%2014%20%2B%20FastAPI-blue?style=for-the-badge)
 ![DB](https://img.shields.io/badge/Database-PostgreSQL-336791?style=for-the-badge&logo=postgresql)
 ![AI](https://img.shields.io/badge/LLM-Ollama%20%28Local%29-black?style=for-the-badge)
@@ -41,13 +41,15 @@ and receive detailed AI-generated feedback — all running **100% locally**, no 
 | **Background jobs** | Synchronous — blocks the server during scoring | Celery + Redis — **async task queue**, non-blocking |
 | **DB schema changes** | `create_all()` — drops and recreates tables | **Alembic migrations** — versioned, reversible, production-safe |
 | **WebSocket auth** | Unprotected or skipped entirely | JWT verified **before** `accept()` — auth at handshake level |
+| **Scoring response** | Waits for LLM — hangs the API for 60–90 seconds | Fire-and-forget Celery task — **API returns in <200ms** |
+| **LLM output handling** | Crashes on malformed JSON | 3-layer fallback parser — **zero scoring crashes** |
 | **Cloud dependency** | Requires internet + API keys to run | **Zero external dependencies** — runs 100% offline after setup |
 
 <br/>
 
 ---
 
-### 🏆 Six Engineering Decisions That Make Interviewers Notice
+### 🏆 Seven Engineering Decisions That Make Interviewers Notice
 
 ---
 
@@ -138,28 +140,79 @@ transcript = await loop.run_in_executor(
 )
 ```
 
-`run_in_executor` is the standard bridge between Python's async world and CPU-heavy synchronous code. Without it, transcription would work in single-user testing and silently degrade under any real load.
+`run_in_executor` is the standard bridge between Python's async world and CPU-heavy synchronous code. Without it, transcription works in single-user testing and silently degrades under any real load.
 
 ---
 
-#### `5` &nbsp; 🚫 Zero Cloud Architecture — Runs Completely Offline
+#### `5` &nbsp; 🧠 Fire-and-Forget LLM Scoring — API Returns in <200ms
 
 > [!NOTE]
-> This project has **no external API dependencies at runtime**. Every AI component runs locally. After the initial model downloads, it works with no internet connection, no API keys, and no monthly bill — ever.
+> Ollama takes 60–90 seconds to score an answer. Calling it synchronously inside an API handler would make the frontend hang with a spinner for over a minute. This project decouples submission from scoring completely using Celery.
 
-| Component | ❌ Typical Approach | ✅ This Project |
-|---|---|---|
-| Speech-to-text | OpenAI Whisper API | `faster-whisper` on CPU |
-| LLM scoring | GPT-4 / Claude API | Ollama `llama3.2` |
-| Filler detection | Custom API or skipped | `vosk` local model |
-| Vector search | Pinecone / Weaviate | FAISS in-process |
-| Background jobs | Cloud Functions | Celery + local Redis |
+```
+POST /api/v1/answers  ← frontend submits transcript
+    ↓
+Answer row created  (processing_status = "pending")
+    ↓
+score_answer_task.delay(answer_id)   ← queued in Redis instantly
+    ↓
+HTTP 202 returned to frontend        ← in under 200ms
 
-**Total monthly cloud cost: ₹0.** This is not a demo that breaks when a free trial expires. It's a self-contained system you own completely.
+Meanwhile, in the Celery worker:
+    Answer loaded → status = "scoring"
+        → OllamaScorer.score(transcript, question)
+            → Ollama llama3.2 generates JSON evaluation
+                → Score row written to DB
+                    → status = "scored"
+
+Frontend polls GET /api/v1/answers/{id}/score every 3 seconds
+    → returns Score when ready, status string while waiting
+```
+
+The API response time and the LLM inference time are completely independent. The user sees a "Scoring…" indicator, not a frozen browser tab.
+
+**Files:** `backend/app/tasks/scoring_task.py` · `backend/app/services/scoring.py` · `backend/app/api/v1/endpoints/answers.py`
 
 ---
 
-#### `6` &nbsp; 🗄️ Production Database Migrations — Not `create_all()`
+#### `6` &nbsp; 🛡️ Fault-Tolerant LLM JSON Parsing — Three Recovery Layers
+
+> [!NOTE]
+> LLMs don't reliably return clean JSON. They wrap it in markdown code fences, add preamble text, include trailing commas, or hallucinate extra keys. This project's `OllamaScorer` never crashes — it always returns a usable score.
+
+```python
+def _safe_parse_json(self, raw: str) -> dict | None:
+    # Layer 1: direct parse — works when LLM is well-behaved
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        pass
+
+    # Layer 2: strip ```json ... ``` markdown fences
+    cleaned = re.sub(r"```json|```", "", raw).strip()
+    try:
+        return json.loads(cleaned)
+    except json.JSONDecodeError:
+        pass
+
+    # Layer 3: regex — find the first {...} block in the response
+    match = re.search(r"\{.*\}", cleaned, re.DOTALL)
+    if match:
+        try:
+            return json.loads(match.group())
+        except json.JSONDecodeError:
+            pass
+
+    return None  # all layers failed → _fallback_score() is used
+```
+
+Additionally: all numeric scores are clamped to 0.0–10.0, and `overall_score` is **always recalculated locally** as `round((ta + cl + sa + co) / 4, 1)` — the model's arithmetic is never trusted.
+
+**File:** `backend/app/services/scoring.py`
+
+---
+
+#### `7` &nbsp; 🗄️ Production Database Migrations — Not `create_all()`
 
 > [!NOTE]
 > **`Base.metadata.create_all()` is fine for a 2-hour tutorial.** For any project you plan to iterate on, it's a trap — it silently does nothing if the table already exists, can't rename or add columns, and has no rollback. This project uses Alembic from day one.
@@ -201,20 +254,30 @@ alembic history           # full audit trail of every change
 ┌─────────────────────────────────────────────────────────────────────┐
 │                    FASTAPI BACKEND (:8000)                          │
 │                                                                     │
-│  POST /api/v1/auth/*        JWT · bcrypt · refresh tokens           │
-│  GET|POST|PATCH /api/v1/interviews/*   Session lifecycle            │
-│  WS /ws/interview/{id}      Binary audio → transcription            │
+│  POST   /api/v1/auth/*              JWT · bcrypt                    │
+│  GET    /api/v1/interviews          List sessions + scores          │
+│  POST   /api/v1/interviews/start    Create session + questions      │
+│  PATCH  /api/v1/interviews/{id}/end End session                     │
+│  POST   /api/v1/answers             Submit transcript → queue       │
+│  GET    /api/v1/answers/{id}/score  Poll scoring status             │
+│  GET    /api/v1/results/{id}        Full session results            │
+│  WS     /ws/interview/{id}          Binary audio → transcription    │
 │                                                                     │
-│  Celery tasks (async)           SQLAlchemy ORM + Alembic            │
+│  ┌─────────────────────────────────────────────────────────────┐    │
+│  │                  ASYNC SCORING PIPELINE                     │    │
+│  │  Redis Queue → Celery Worker → OllamaScorer → Score row     │    │
+│  │  POST /answers returns 202 in <200ms while Ollama runs      │    │
+│  └─────────────────────────────────────────────────────────────┘    │
+│                                                                     │
 │  ┌──────────────────┐          ┌───────────────────────┐            │
 │  │  Redis Broker    │          │  PostgreSQL            │           │
 │  │  Result Backend  │          │  5 tables, versioned   │           │
 │  └──────────────────┘          └───────────────────────┘            │
 │                                                                     │
-│  ┌──────────────┐  ┌──────────────┐  ┌───────┐  ┌──────────────┐    │
-│  │faster-whisper│  │Ollama llama3 │  │ vosk  │  │ FAISS index  │    │
-│  │  (CPU, int8) │  │  (local LLM) │  │(local)│  │  (in-proc)   │    │
-│  └──────────────┘  └──────────────┘  └───────┘  └──────────────┘    │
+│  ┌──────────────┐  ┌──────────────┐  ┌───────────────────────┐      │
+│  │faster-whisper│  │Ollama llama3 │  │  Static Question Bank │      │
+│  │  (CPU, int8) │  │  (local LLM) │  │  (FAISS in Phase 6)   │      │
+│  └──────────────┘  └──────────────┘  └───────────────────────┘      │
 │          ↑ all local · all free · all offline-capable ↑             │
 └─────────────────────────────────────────────────────────────────────┘
 ```
@@ -232,6 +295,7 @@ alembic history           # full audit trail of every change
 - [Environment Variables](#-environment-variables)
 - [Authentication Architecture](#-authentication-architecture)
 - [WebSocket Architecture](#-websocket-architecture)
+- [Scoring Pipeline](#-scoring-pipeline)
 - [Database Schema](#-database-schema)
 - [API Reference](#-api-reference)
 - [Development Phases](#-development-phases)
@@ -243,22 +307,31 @@ alembic history           # full audit trail of every change
 AI Interview Coach simulates a real placement interview. Here's what happens end to end:
 
 ```
-You speak your answer
+You select domain + difficulty → session starts with 5 questions
        ↓
-faster-whisper transcribes it in real time (local, no cloud)
+First question displayed on screen
        ↓
-vosk detects filler words ("um", "uh", "like")
+You hit Record and speak your answer
        ↓
-Ollama (llama3.2) scores your answer on 4 dimensions
+faster-whisper transcribes in real time (local, 5-second chunks)
        ↓
-LangChain + FAISS retrieves relevant domain knowledge
+You stop recording → transcript submitted to backend
        ↓
-You get a score, ideal answer, and follow-up question
+Answer row created in DB → Celery fires scoring task instantly
        ↓
-Dashboard tracks your progress over time
+API returns in <200ms → "Scoring your answer…" shown to user
+       ↓
+Ollama llama3.2 scores on 4 dimensions (runs in background):
+  Technical Accuracy · Clarity · STAR Alignment · Completeness
+       ↓
+Score, strengths, improvements, ideal answer + follow-up question
+       ↓
+Results page shows full breakdown
+       ↓
+Dashboard tracks all sessions with live stats + streak
 ```
 
-Everything runs on your machine — no OpenAI, no cloud bills.
+Everything runs on your machine — no OpenAI, no cloud bills, no rate limits.
 
 ---
 
@@ -268,18 +341,18 @@ Everything runs on your machine — no OpenAI, no cloud bills.
 |---|---|---|
 | **Frontend** | Next.js 14 (App Router), JavaScript, Tailwind CSS | UI + routing |
 | **Component Library** | shadcn/ui | Pre-built accessible components |
-| **Charts** | Chart.js | Score analytics + progress graphs |
+| **Charts** | Chart.js | Score analytics (Phase 7) |
 | **Backend** | Python FastAPI | REST API + WebSockets |
 | **Auth** | JWT (python-jose) + bcrypt | Stateless authentication |
-| **Task Queue** | Celery + Redis | Async transcription + scoring jobs |
+| **Task Queue** | Celery + Redis (Memurai on Windows) | Async scoring jobs |
 | **Database** | PostgreSQL + SQLAlchemy ORM + Alembic | Persistent storage + migrations |
-| **Speech-to-Text** | faster-whisper (local) | High-accuracy transcription |
-| **Filler Detection** | vosk (local) | Real-time "um/uh/like" detection |
-| **LLM / Scoring** | Ollama — llama3.2 (local) | Answer evaluation + ideal answers |
-| **RAG Pipeline** | LangChain + FAISS (local) | Domain-specific question generation |
+| **Speech-to-Text** | faster-whisper (local) | Real-time transcription |
+| **LLM / Scoring** | Ollama — llama3.2 (local) | 4-dimension answer evaluation |
+| **HTTP Client** | httpx | Sync calls from scoring service to Ollama |
+| **Question Bank** | Static Python dict (FAISS in Phase 6) | Domain-specific questions |
 | **Audio Capture** | MediaRecorder API + Web Audio API | Browser mic recording + waveform |
 
-> 💡 **Zero external API costs** — every AI component runs locally via Ollama.
+> 💡 **Zero external API costs** — every AI component runs locally.
 
 ---
 
@@ -288,76 +361,71 @@ Everything runs on your machine — no OpenAI, no cloud bills.
 ```
 interview-coach/
 ├── .env                              # All secrets — NEVER commit this
-├── .env.example                      # Safe template to share with teammates
+├── .env.example                      # Safe template to share
 │
-├── frontend/                         # Next.js 14 application
-│   ├── .env.local                    # Frontend JWT secret for middleware
+├── frontend/
+│   ├── .env.local
 │   └── src/
-│       ├── middleware.js             # Protects /dashboard, /interview, /results
+│       ├── middleware.js             # Guards /dashboard, /interview, /results
 │       ├── app/
 │       │   ├── api/
 │       │   │   ├── auth/
-│       │   │   │   ├── [action]/
-│       │   │   │   │   └── route.js  # BFF proxy (login/register/logout/me/refresh)
-│       │   │   │   └── token/
-│       │   │   │       └── route.js  # Exposes JWT for WebSocket auth
-│       │   │   └── v1/
-│       │   │       └── [...path]/
-│       │   │           └── route.js  # Generic BFF proxy → FastAPI /api/v1/*
+│       │   │   │   ├── [action]/route.js   # BFF: login/register/logout/me
+│       │   │   │   └── token/route.js      # Exposes JWT for WebSocket auth
+│       │   │   └── v1/[...path]/route.js   # Generic BFF proxy → FastAPI
 │       │   ├── (auth)/
-│       │   │   ├── login/
-│       │   │   │   └── page.js       # Login form
-│       │   │   └── register/
-│       │   │       └── page.js       # Register form
+│       │   │   ├── login/page.js
+│       │   │   └── register/page.js
 │       │   ├── (dashboard)/
-│       │   │   ├── dashboard/
-│       │   │   │   └── page.js       # Start interview form
-│       │   │   ├── interview/[id]/
-│       │   │   │   └── page.js       # Live interview session page
-│       │   │   └── results/[id]/     # page.js — Phase 5
-│       │   ├── layout.js
-│       │   └── page.js               # Landing page
+│       │   │   ├── dashboard/page.js       # Real stats + session history
+│       │   │   ├── interview/[id]/page.js  # Question + recorder + submit
+│       │   │   └── results/[id]/page.js    # Score breakdown page
+│       │   └── page.js                     # Landing page
 │       ├── components/
-│       │   ├── ui/                   # shadcn/ui primitives
-│       │   ├── interview/
-│       │   │   └── AudioRecorder.jsx # Waveform + controls component
-│       │   ├── dashboard/            # Stats cards, history — Phase 5
-│       │   └── charts/               # Chart.js wrappers — Phase 7
+│       │   ├── ui/                         # shadcn/ui primitives
+│       │   └── interview/
+│       │       └── AudioRecorder.jsx       # Waveform + controls
 │       ├── hooks/
-│       │   └── useAudioRecorder.js   # MediaRecorder + WebSocket hook
+│       │   └── useAudioRecorder.js         # MediaRecorder + WebSocket hook
 │       ├── lib/
-│       │   ├── utils.js              # shadcn auto-generated
-│       │   └── auth.js               # login(), register(), logout(), getMe()
+│       │   └── auth.js                     # login(), register(), logout(), getMe()
 │       └── services/
-│           └── interviews.js         # startInterview(), getInterview(), endInterview()
+│           ├── interviews.js               # start, get, end, list sessions
+│           └── answers.js                  # submit, pollScore, getResults
 │
-└── backend/                          # FastAPI application
-    ├── main.py                       # Interview + WebSocket routers registered
+└── backend/
+    ├── main.py                       # All routers registered
     ├── requirements.txt
     ├── alembic.ini
-    ├── alembic/
-    │   ├── env.py
-    │   └── versions/
-    │       └── xxxx_initial_schema.py
+    ├── alembic/versions/
     └── app/
         ├── api/v1/endpoints/
         │   ├── auth.py               # register, login, me, logout, refresh
-        │   ├── interviews.py         # start, get, end session routes
-        │   └── websocket.py          # WS /ws/interview/{session_id}
+        │   ├── interviews.py         # list, start, get, end
+        │   ├── websocket.py          # WS /ws/interview/{id}
+        │   ├── answers.py            # submit transcript, poll score
+        │   └── results.py            # full session results
         ├── core/
         │   ├── config.py             # Pydantic settings from .env
-        │   └── security.py           # bcrypt hashing + JWT create/decode
-        ├── db/
-        │   └── database.py           # SQLAlchemy engine + get_db()
-        ├── dependencies.py           # get_current_user() reusable dependency
-        ├── models/                   # All 5 SQLAlchemy models
+        │   └── security.py           # bcrypt + JWT
+        ├── db/database.py            # SQLAlchemy engine + get_db()
+        ├── dependencies.py           # get_current_user()
+        ├── models/                   # 5 SQLAlchemy models
+        │   ├── user.py
+        │   ├── interview_session.py
+        │   ├── question.py
+        │   ├── answer.py
+        │   └── score.py
         ├── schemas/
-        │   ├── user.py               # UserCreate, UserLogin, UserResponse, TokenResponse
-        │   └── interview.py          # InterviewStartRequest, SessionResponse, WS schemas
-        ├── services/                 # Business logic — Phase 5
-        ├── tasks/
-        │   └── celery_app.py         # Celery + Redis
-        └── utils/                    # Helper functions — Phase 5
+        │   ├── user.py
+        │   ├── interview.py          # Session, Question, SessionListItem
+        │   └── scoring.py            # AnswerSubmit, ScoreResponse, Results
+        ├── services/
+        │   ├── question_bank.py      # Static question dict by domain
+        │   └── scoring.py            # OllamaScorer — calls llama3.2
+        └── tasks/
+            ├── celery_app.py         # Celery + Redis config
+            └── scoring_task.py       # score_answer_task (Celery worker)
 ```
 
 ---
@@ -370,7 +438,7 @@ interview-coach/
 | Python | 3.10+ | FastAPI backend | — |
 | PostgreSQL | 16 | Main database | — |
 | Redis / Memurai | Latest | Celery broker | Use [Memurai](https://www.memurai.com/) on Windows |
-| Ollama | Latest | Local LLM | — |
+| Ollama | Latest | Local LLM | Run `ollama pull llama3.2` after install |
 | **ffmpeg** | **Latest** | **WebM audio decoding for faster-whisper** | **Add `bin/` to System PATH. Verify: `ffmpeg -version`** |
 | Git | Any | Version control | — |
 
@@ -415,7 +483,6 @@ JWT_SECRET_KEY=paste_the_same_secret_here
 cd backend
 python -m venv venv
 source venv/Scripts/activate    # Windows Git Bash
-# venv\Scripts\activate         # Windows CMD
 pip install -r requirements.txt
 ```
 
@@ -457,7 +524,7 @@ ollama pull llama3.2
 
 | Terminal | Command |
 |---|---|
-| **1 — Redis** | `redis-cli ping` (Memurai runs as a Windows service) |
+| **1 — Redis** | Memurai runs as a Windows service. Verify: `redis-cli ping` → `PONG` |
 | **2 — Backend** | `cd backend && uvicorn main:app --reload --host 0.0.0.0 --port 8000` |
 | **3 — Celery** | `cd backend && celery -A app.tasks.celery_app worker --loglevel=info --pool=solo` |
 | **4 — Frontend** | `cd frontend && npm run dev` |
@@ -466,15 +533,13 @@ ollama pull llama3.2
 
 | Service | Check | Expected |
 |---|---|---|
-| PostgreSQL | `psql -U postgres -c "SELECT 1;"` | Returns `1` |
 | Redis | `redis-cli ping` | `PONG` |
-| ffmpeg | `ffmpeg -version` | Version string |
-| FastAPI | `http://localhost:8000/health` | `{"status":"ok","version":"0.4.0"}` |
-| faster-whisper | Backend terminal on startup | `✅ faster-whisper model loaded (tiny, int8)` |
+| Celery | Terminal 3 on startup | `score_answer_task` in `[tasks]` list |
+| FastAPI | `http://localhost:8000/health` | `{"status":"ok","version":"0.5.0"}` |
+| Ollama | `ollama list` | `llama3.2` in the list |
+| faster-whisper | Backend terminal on startup | Model loaded message |
 | Next.js | `http://localhost:3000` | Landing page |
-| Dashboard | `http://localhost:3000/dashboard` | Start Interview form (requires login) |
-| Protected route | `http://localhost:3000/dashboard` (logged out) | Redirects to `/login` |
-| Celery | Terminal 3 | `celery@yourpc ready.` |
+| Full flow | Record answer → stop → wait 3s | Score appears on results page |
 
 ---
 
@@ -511,7 +576,6 @@ ollama pull llama3.2
 | **Lifetime** | 30 minutes | 7 days |
 | **Storage** | `httpOnly` cookie | `httpOnly` cookie |
 | **JS readable?** | ❌ Never | ❌ Never |
-| **Cookie path** | `/` | `/api/auth/refresh` only |
 
 ### Adding a Protected FastAPI Route
 
@@ -544,7 +608,6 @@ MediaRecorder → binary blob → WebSocket.send()
 | Server → Client | `transcript` | `text`, `chunk_index`, `is_final` |
 | Server → Client | `error` | `code`, `message` |
 | Client → Server | *(binary)* | Raw audio blob |
-| Client → Server | `ping` | — |
 
 ### WebSocket Close Codes
 
@@ -556,10 +619,49 @@ MediaRecorder → binary blob → WebSocket.send()
 
 ---
 
+## 🧠 Scoring Pipeline
+
+```
+POST /api/v1/answers
+  { question_id, transcript, audio_duration }
+        ↓
+  Answer row created  (processing_status = "pending")
+  score_answer_task.delay(answer_id)  ← queued in Redis
+  HTTP 202 returned immediately
+        ↓
+Celery worker picks up task
+  status → "scoring"
+  OllamaScorer.score(transcript, question_text)
+    → POST http://localhost:11434/api/generate
+    → llama3.2 returns JSON evaluation
+    → _safe_parse_json() (3-layer fallback)
+    → all scores clamped to 0.0–10.0
+    → overall_score recalculated locally
+  Score row written to DB
+  status → "scored"
+        ↓
+Frontend polls GET /api/v1/answers/{id}/score every 3 seconds
+  "pending" / "scoring"  →  keep polling
+  "scored"               →  render ScoreResponse
+  "failed"               →  show error message
+```
+
+### Score Dimensions
+
+| Dimension | What It Measures |
+|---|---|
+| `technical_accuracy` | Correctness of technical content |
+| `clarity` | How clearly the answer was communicated |
+| `star_alignment` | Use of Situation-Task-Action-Result structure |
+| `completeness` | How thoroughly the question was addressed |
+| `overall_score` | Mean of all four — calculated locally, never from LLM |
+
+---
+
 ## 🗄 Database Schema
 
 ```
-users (1) → interview_sessions (many) → questions (many) → answers (many) → scores (1)
+users (1) ──→ interview_sessions (many) ──→ questions (many) ──→ answers (many) ──→ scores (1)
 ```
 
 <details>
@@ -567,12 +669,12 @@ users (1) → interview_sessions (many) → questions (many) → answers (many) 
 
 | Column | Type | Notes |
 |---|---|---|
-| id | Integer PK | Auto-increment |
+| id | Integer PK | |
 | email | String | Unique, indexed |
 | hashed_password | String | bcrypt — never plaintext |
 | name | String | Display name |
 | is_active | Boolean | Soft delete |
-| created_at / updated_at | DateTime | Server clock |
+| created_at / updated_at | DateTime | |
 
 </details>
 
@@ -583,11 +685,11 @@ users (1) → interview_sessions (many) → questions (many) → answers (many) 
 |---|---|---|
 | id | Integer PK | |
 | user_id | Integer FK | → users.id |
-| domain | String | backend / ml / system_design / etc. |
-| company_mode | String | nullable — google / amazon / etc. |
+| domain | String | backend / frontend / ml / system_design / dsa / behavioral |
 | difficulty | String | easy / medium / hard |
+| company_mode | String | nullable |
 | status | Enum | pending / in_progress / completed / abandoned |
-| started_at / ended_at | DateTime | Session timestamps |
+| started_at / ended_at | DateTime | |
 
 </details>
 
@@ -596,11 +698,11 @@ users (1) → interview_sessions (many) → questions (many) → answers (many) 
 
 **questions:** session_id FK · question_text · order_index · question_type · is_follow_up
 
-**answers:** question_id FK · transcript · audio_duration · filler_word_count · filler_words_json · processing_status · attempt_number
+**answers:** question_id FK · transcript · audio_duration · filler_word_count · filler_words_json · processing_status (`pending` / `scoring` / `scored` / `failed`) · attempt_number
 
 **scores:** answer_id FK (unique) · technical_accuracy · clarity · star_alignment · completeness · overall_score · strengths_json · improvements_json · ideal_answer · follow_up_question
 
-All scores are `Float` on a 0.0–10.0 scale.
+All score columns are `Float`, scale 0.0–10.0.
 
 </details>
 
@@ -617,7 +719,7 @@ alembic history           # audit trail
 
 ## 📡 API Reference
 
-Docs at **`http://localhost:8000/docs`** — use the 🔒 Authorize button with `Bearer <token>`.
+Docs at **`http://localhost:8000/docs`**
 
 ### Auth — `/api/v1/auth`
 
@@ -633,22 +735,29 @@ Docs at **`http://localhost:8000/docs`** — use the 🔒 Authorize button with 
 
 | Method | Endpoint | Auth | Status |
 |---|---|---|---|
+| `GET` | `/` | ✅ | ✅ |
 | `POST` | `/start` | ✅ | ✅ |
 | `GET` | `/{id}` | ✅ | ✅ |
 | `PATCH` | `/{id}/end` | ✅ | ✅ |
 
+### Answers — `/api/v1/answers`
+
+| Method | Endpoint | Auth | Notes |
+|---|---|---|---|
+| `POST` | `/` | ✅ | Returns 202 immediately |
+| `GET` | `/{id}/score` | ✅ | Poll every 3s |
+
+### Results — `/api/v1/results`
+
+| Method | Endpoint | Auth | Status |
+|---|---|---|---|
+| `GET` | `/{session_id}` | ✅ | ✅ |
+
 ### WebSocket — `/ws`
 
-| Protocol | Endpoint | Auth | Status |
-|---|---|---|---|
-| `WS` | `/interview/{session_id}` | `?token=<jwt>` | ✅ |
-
-### Results — `/api/v1/results` *(Phase 5)*
-
-| Method | Endpoint | Status |
+| Protocol | Endpoint | Auth |
 |---|---|---|
-| `GET` | `/{id}` | ⏳ |
-| `GET` | `/{id}/scores` | ⏳ |
+| `WS` | `/interview/{session_id}?token=<jwt>` | Token in query param |
 
 ---
 
@@ -656,13 +765,13 @@ Docs at **`http://localhost:8000/docs`** — use the 🔒 Authorize button with 
 
 | Phase | What Gets Built | Status |
 |---|---|---|
-| **Phase 1** | Project scaffold, FastAPI + Next.js, CORS, Celery + Redis | ✅ Complete |
+| **Phase 1** | FastAPI scaffold, CORS, Celery + Redis wired up | ✅ Complete |
 | **Phase 2** | PostgreSQL schema, 5 SQLAlchemy models, Alembic migrations | ✅ Complete |
-| **Phase 3** | JWT auth, httpOnly cookies, BFF proxy, protected routes, middleware | ✅ Complete |
-| **Phase 4** | Interview session API, WebSocket transcription, faster-whisper, waveform UI | ✅ Complete |
-| **Phase 5** | Ollama scoring, vosk filler detection, Celery pipeline, feedback generation | 🔜 Next |
-| **Phase 6** | RAG pipeline — LangChain + FAISS, domain-specific question generation | ⏳ Planned |
-| **Phase 7** | Dashboard UI, Chart.js analytics, results page, score history | ⏳ Planned |
+| **Phase 3** | JWT auth, httpOnly cookies, BFF proxy, middleware route guards | ✅ Complete |
+| **Phase 4** | Interview session API, WebSocket audio pipeline, faster-whisper, live waveform UI | ✅ Complete |
+| **Phase 5** | Question display, transcript persistence, Ollama scoring, Celery pipeline, results page, live dashboard | ✅ Complete |
+| **Phase 6** | Multi-question sessions, FAISS vector search, vosk filler word detection | 🔜 Next |
+| **Phase 7** | Chart.js analytics dashboard, score trends, domain performance breakdown | ⏳ Planned |
 | **Phase 8** | Polish, error handling, performance tuning, deployment prep | ⏳ Planned |
 
 ---
@@ -684,8 +793,6 @@ OLLAMA_MODEL=llama3.2
 WHISPER_MODEL_SIZE=tiny
 WHISPER_DEVICE=cpu
 WHISPER_COMPUTE_TYPE=int8
-FAISS_INDEX_PATH=./data/faiss_index
-KNOWLEDGE_BASE_PATH=./data/knowledge_base
 APP_ENV=development
 DEBUG=True
 FRONTEND_URL=http://localhost:3000
@@ -695,7 +802,7 @@ BACKEND_URL=http://localhost:8000
 ### Frontend — `frontend/.env.local`
 
 ```env
-JWT_SECRET_KEY=your_generated_secret_here   # same value as backend .env
+JWT_SECRET_KEY=your_generated_secret_here   # must match backend .env exactly
 ```
 
 > ⚠️ Never commit either file. Both are in `.gitignore`.
@@ -704,11 +811,15 @@ JWT_SECRET_KEY=your_generated_secret_here   # same value as backend .env
 
 ## 🐛 Known Issues & Fixes
 
-**`passlib` + `bcrypt >= 4.0.0` crash** — Fixed in Phase 3 by dropping passlib entirely and calling `bcrypt` directly.
+**`passlib` + `bcrypt >= 4.0.0` crash** — Fixed in Phase 3 by dropping passlib and calling `bcrypt` directly.
 
-**faster-whisper returns `[silence]` or errors** — ffmpeg not in PATH. Add `bin/` to Windows System PATH, restart terminal, run `ffmpeg -version`.
+**faster-whisper returns `[silence]` or decode errors** — ffmpeg not in PATH. Add `bin/` to Windows System PATH, restart terminal, verify with `ffmpeg -version`.
 
-**WebSocket closes with code `4001`** — Token expired. Log out, log back in (tokens last 30 minutes).
+**WebSocket closes with code `4001`** — Token expired. Log out and log back in.
+
+**Celery task not found on startup** — `score_answer_task` missing from `[tasks]` list. Ensure `celery_app.autodiscover_tasks(["app.tasks"])` is in `celery_app.py`, then restart Terminal 3.
+
+**Ollama timeout during scoring** — llama3.2 is slow on first run. `httpx` timeout is set to 120 seconds. If your machine is slow, increase it in `scoring.py`.
 
 **Safari mic doesn't work** — Safari doesn't support `audio/webm;codecs=opus`. Use Chrome, Firefox, or Edge.
 
@@ -719,14 +830,11 @@ JWT_SECRET_KEY=your_generated_secret_here   # same value as backend .env
 ```gitignore
 .env
 .env.local
-.env.*.local
 backend/venv/
 __pycache__/
 *.pyc
 frontend/node_modules/
 frontend/.next/
-frontend/out/
-backend/data/
 .DS_Store
 Thumbs.db
 ```
