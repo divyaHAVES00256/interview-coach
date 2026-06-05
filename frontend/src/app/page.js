@@ -181,10 +181,6 @@ export default function Home() {
               background:'rgba(0,212,170,0.07)',
               border:'1px solid rgba(0,212,170,0.22)',
               color:'var(--accent)'}}>
-              <span style={{width:7,height:7,borderRadius:'50%',
-                background:'#00ff87',display:'inline-block',
-                animation:'wave .9s ease-in-out infinite',
-                boxShadow:'0 0 8px #00ff87'}} />
               100% Local &nbsp;·&nbsp; Zero Cloud Costs &nbsp;·&nbsp; Built at NSUT Delhi
             </span>
           </div>
@@ -263,19 +259,6 @@ export default function Home() {
                 </div>
               </div>
             ))}
-          </div>
-
-          {/* Scroll indicator */}
-          <div style={{position:'absolute',bottom:28,left:'50%',transform:'translateX(-50%)',
-            display:'flex',flexDirection:'column',alignItems:'center',gap:8}}>
-            <span style={{fontFamily:'var(--font-mono)',fontSize:10,
-              color:'var(--muted)',letterSpacing:'.1em'}}>SCROLL</span>
-            <div className="scroll-dot" style={{
-              width:22,height:36,borderRadius:99,
-              border:'1px solid rgba(0,212,170,0.22)',
-              display:'flex',alignItems:'flex-start',justifyContent:'center',paddingTop:7}}>
-              <div style={{width:4,height:8,borderRadius:99,background:'var(--accent)'}} />
-            </div>
           </div>
         </section>
 

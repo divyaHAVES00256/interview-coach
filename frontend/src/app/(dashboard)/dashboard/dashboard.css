@@ -768,6 +768,14 @@
   background: rgba(0, 212, 170, 0.03);
 }
 
+.dash-session-row-clickable {
+  cursor: pointer;
+}
+
+.dash-session-row-clickable:hover {
+  background: rgba(0, 212, 170, 0.07);
+}
+
 /* Left cluster: status dot + domain + difficulty badge + date */
 .dash-session-left {
   display: flex;

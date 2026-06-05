@@ -166,6 +166,9 @@ export default function InterviewPage() {
   const [submitError,    setSubmitError]    = useState(null)
   const [scoreResult,    setScoreResult]    = useState(null)
 
+  /* NEW STATE — multi-question */
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
+
   /* session fetch */
   useEffect(() => {
     async function fetchSession() {
@@ -222,8 +225,8 @@ export default function InterviewPage() {
       setSubmitError('No transcript detected. Please record your answer before submitting.')
       return
     }
-    const firstQuestion = session?.questions?.[0]
-    if (!firstQuestion) {
+    const currentQuestion = session?.questions?.[currentQuestionIndex]
+    if (!currentQuestion) {
       setSubmitError('Could not find question data. Please refresh and try again.')
       return
     }
@@ -232,13 +235,36 @@ export default function InterviewPage() {
     setSubmitError(null)
     setScoreResult(null)
     try {
-      const { answer_id } = await submitAnswer(firstQuestion.id, fullTranscript, audioDuration)
+      const { answer_id } = await submitAnswer(currentQuestion.id, fullTranscript, audioDuration)
       const result = await pollScore(answer_id)
       setScoreResult(result)
     } catch (err) {
       setSubmitError(err.message || 'Failed to submit answer. Please try again.')
     } finally {
       setIsSubmitting(false)
+    }
+  }
+
+  /* advance to next question and reset all per-question state */
+  async function handleNextQuestion() {
+    setCurrentQuestionIndex(prev => prev + 1)
+    setTranscripts([])
+    setScoreResult(null)
+    setSubmitError(null)
+    setRecorderError(null)
+    // recording already stopped at this point
+  }
+
+  /* skip current question */
+  function handleSkipQuestion() {
+    if (isLastQuestion) {
+      handleEndInterview()
+    } else {
+      setCurrentQuestionIndex(prev => prev + 1)
+      setTranscripts([])
+      setScoreResult(null)
+      setSubmitError(null)
+      setRecorderError(null)
     }
   }
 
@@ -277,15 +303,19 @@ export default function InterviewPage() {
     )
   }
 
+  /* derive current question + multi-question helpers */
+  const currentQuestion = session?.questions?.[currentQuestionIndex]
+  const totalQuestions  = session?.questions?.length ?? 0
+  const isLastQuestion  = currentQuestionIndex === totalQuestions - 1
+
   /* derive phase for state machine */
-  const firstQuestion = session?.questions?.[0]
   const phase =
-    scoreResult?.overall_score != null       ? 'scored'     :
-    scoreResult?.processing_status === 'failed' ? 'failed'  :
-    isSubmitting                             ? 'submitting'  :
-    isPaused                                 ? 'paused'      :
-    isRecording                              ? 'recording'   :
-                                               'idle'
+    scoreResult?.overall_score != null          ? 'scored'     :
+    scoreResult?.processing_status === 'failed' ? 'failed'     :
+    isSubmitting                                ? 'submitting'  :
+    isPaused                                    ? 'paused'      :
+    isRecording                                 ? 'recording'   :
+                                                  'idle'
 
   /* ws status indicator color */
   const wsColor =
@@ -375,27 +405,26 @@ export default function InterviewPage() {
               {/* Header row */}
               <div style={{ display:'flex', alignItems:'center', gap:'0.5rem', flexWrap:'wrap' }}>
                 <Pill color="indigo">
-                  Q{firstQuestion ? firstQuestion.order_index + 1 : 1}
-                  {session?.questions?.length > 1 ? ` of ${session.questions.length}` : ''}
+                  Q{currentQuestionIndex + 1} of {totalQuestions}
                 </Pill>
-                {firstQuestion?.question_type && (
-                  <Pill>{firstQuestion.question_type}</Pill>
+                {currentQuestion?.question_type && (
+                  <Pill>{currentQuestion.question_type}</Pill>
                 )}
-                {firstQuestion?.is_follow_up && (
+                {currentQuestion?.is_follow_up && (
                   <Pill color="amber">Follow-up</Pill>
                 )}
               </div>
 
               {/* The question — primary reading surface */}
               <div style={{ flex:1, overflowY:'auto', paddingRight:4 }}>
-                {firstQuestion ? (
+                {currentQuestion ? (
                   <p className={dm.className} style={{
                     fontSize:'clamp(1.05rem, 1.8vw, 1.25rem)',
                     lineHeight:1.75, margin:0,
                     color:'rgba(255,255,255,0.92)',
                     fontWeight:500,
                   }}>
-                    {firstQuestion.question_text}
+                    {currentQuestion.question_text}
                   </p>
                 ) : (
                   <p className={dm.className} style={{ opacity:0.35, fontStyle:'italic', margin:0 }}>
@@ -524,6 +553,19 @@ export default function InterviewPage() {
                     onMouseLeave={e => { e.currentTarget.style.background='rgba(99,102,241,0.85)'; e.currentTarget.style.transform='translateY(0)' }}
                   >
                     <Mic size={16} /> Start Recording
+                  </button>
+
+                  {/* Skip question text button */}
+                  <button onClick={handleSkipQuestion} style={{
+                    background: 'none', border: 'none',
+                    color: 'rgba(255,255,255,0.25)',
+                    fontSize: '0.75rem', cursor: 'pointer',
+                    fontFamily: 'var(--font-dm)',
+                    textDecoration: 'underline',
+                    textUnderlineOffset: 3,
+                    marginTop: -8,
+                  }}>
+                    {isLastQuestion ? 'Skip & finish' : 'Skip this question'}
                   </button>
                 </>
               )}
@@ -727,33 +769,93 @@ export default function InterviewPage() {
                     <span className={mono.className} style={{ fontSize:'0.58rem', opacity:0.45, letterSpacing:'0.08em' }}>/ 10</span>
                   </div>
 
-                  <div>
-                    <p className={syne.className} style={{ fontWeight:700, fontSize:'1.05rem', margin:'0 0 5px', color:'rgba(255,255,255,0.92)' }}>
-                      Answer scored! 🎉
-                    </p>
-                    <p className={dm.className} style={{ fontSize:'0.82rem', opacity:0.38, margin:0 }}>
-                      View your full breakdown with AI feedback
-                    </p>
-                  </div>
+                  {!isLastQuestion ? (
+                    /* ── NOT last question: heading + two buttons ── */
+                    <>
+                      <div>
+                        <p className={syne.className} style={{ fontWeight:700, fontSize:'1.05rem', margin:'0 0 5px', color:'rgba(255,255,255,0.92)' }}>
+                          Answer scored! 🎉
+                        </p>
+                        <p className={dm.className} style={{ fontSize:'0.82rem', opacity:0.38, margin:0 }}>
+                          View your full breakdown with AI feedback
+                        </p>
+                      </div>
 
-                  <button
-                    onClick={() => router.push(`/results/${id}`)}
-                    style={{
-                      display:'flex', alignItems:'center', justifyContent:'center', gap:8,
-                      background:'rgba(52,211,153,0.85)',
-                      border:'none', borderRadius:10,
-                      color:'#022c22', cursor:'pointer',
-                      padding:'0.75rem 1.75rem',
-                      fontSize:'0.875rem', fontWeight:700,
-                      fontFamily:'var(--font-syne)',
-                      width:'100%',
-                      transition:'background 0.2s, transform 0.15s',
-                    }}
-                    onMouseEnter={e => { e.currentTarget.style.background='rgba(52,211,153,1)'; e.currentTarget.style.transform='translateY(-1px)' }}
-                    onMouseLeave={e => { e.currentTarget.style.background='rgba(52,211,153,0.85)'; e.currentTarget.style.transform='translateY(0)' }}
-                  >
-                    View Full Results <ChevronRight size={15} />
-                  </button>
+                      <div style={{ display:'flex', flexDirection:'column', gap:'0.6rem', width:'100%' }}>
+                        {/* Next Question button */}
+                        <button
+                          onClick={handleNextQuestion}
+                          style={{
+                            display:'flex', alignItems:'center', justifyContent:'center', gap:8,
+                            background:'rgba(52,211,153,0.85)',
+                            border:'none', borderRadius:10,
+                            color:'#022c22', cursor:'pointer',
+                            padding:'0.75rem 1.75rem',
+                            fontSize:'0.875rem', fontWeight:700,
+                            fontFamily:'var(--font-syne)',
+                            width:'100%',
+                            transition:'background 0.2s, transform 0.15s',
+                          }}
+                          onMouseEnter={e => { e.currentTarget.style.background='rgba(52,211,153,1)'; e.currentTarget.style.transform='translateY(-1px)' }}
+                          onMouseLeave={e => { e.currentTarget.style.background='rgba(52,211,153,0.85)'; e.currentTarget.style.transform='translateY(0)' }}
+                        >
+                          Next Question → <ChevronRight size={15} />
+                        </button>
+
+                        {/* End Interview ghost button */}
+                        <button
+                          onClick={handleEndInterview}
+                          style={{
+                            display:'flex', alignItems:'center', justifyContent:'center', gap:8,
+                            background:'rgba(255,255,255,0.07)',
+                            border:'1px solid rgba(255,255,255,0.12)',
+                            borderRadius:10,
+                            color:'#fff', cursor:'pointer',
+                            padding:'0.75rem 1.75rem',
+                            fontSize:'0.875rem', fontWeight:600,
+                            fontFamily:'var(--font-syne)',
+                            width:'100%',
+                            transition:'background 0.2s, transform 0.15s',
+                          }}
+                          onMouseEnter={e => { e.currentTarget.style.background='rgba(255,255,255,0.12)'; e.currentTarget.style.transform='translateY(-1px)' }}
+                          onMouseLeave={e => { e.currentTarget.style.background='rgba(255,255,255,0.07)'; e.currentTarget.style.transform='translateY(0)' }}
+                        >
+                          End Interview
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    /* ── Last question: "All answered" heading + single View Results button ── */
+                    <>
+                      <div>
+                        <p className={syne.className} style={{ fontWeight:700, fontSize:'1.05rem', margin:'0 0 5px', color:'rgba(255,255,255,0.92)' }}>
+                          All questions answered! 🎉
+                        </p>
+                        <p className={dm.className} style={{ fontSize:'0.82rem', opacity:0.38, margin:0 }}>
+                          View your full breakdown with AI feedback
+                        </p>
+                      </div>
+
+                      <button
+                        onClick={async () => { await endInterview(id); router.push(`/results/${id}`) }}
+                        style={{
+                          display:'flex', alignItems:'center', justifyContent:'center', gap:8,
+                          background:'rgba(52,211,153,0.85)',
+                          border:'none', borderRadius:10,
+                          color:'#022c22', cursor:'pointer',
+                          padding:'0.75rem 1.75rem',
+                          fontSize:'0.875rem', fontWeight:700,
+                          fontFamily:'var(--font-syne)',
+                          width:'100%',
+                          transition:'background 0.2s, transform 0.15s',
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.background='rgba(52,211,153,1)'; e.currentTarget.style.transform='translateY(-1px)' }}
+                        onMouseLeave={e => { e.currentTarget.style.background='rgba(52,211,153,0.85)'; e.currentTarget.style.transform='translateY(0)' }}
+                      >
+                        View Full Results → <ChevronRight size={15} />
+                      </button>
+                    </>
+                  )}
                 </>
               )}
 

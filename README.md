@@ -25,14 +25,11 @@ and receive detailed AI-generated feedback — all running **100% locally**, no 
 
 ## ⭐ What Makes This Project Stand Out
 
-> [!IMPORTANT]
-> This is not a tutorial clone. Every architectural decision below was made deliberately, solves a real engineering problem, and reflects patterns used in production systems — not "it works on my machine" code.
-
 <br/>
 
 ### 🆚 This Project vs. Every Other Interview Coach on GitHub
 
-| Feature | ❌ Typical Student Project | ✅ This Project |
+| Feature | ❌ Typical Projects | ✅ This Project |
 |---|---|---|
 | **Auth token storage** | `localStorage` — vulnerable to XSS attacks | `httpOnly` cookies via BFF — JS can **never** read the token |
 | **Speech-to-text** | OpenAI Whisper API — costs money per minute | `faster-whisper` local — runs on CPU, **zero cost forever** |
@@ -806,22 +803,6 @@ JWT_SECRET_KEY=your_generated_secret_here   # must match backend .env exactly
 ```
 
 > ⚠️ Never commit either file. Both are in `.gitignore`.
-
----
-
-## 🐛 Known Issues & Fixes
-
-**`passlib` + `bcrypt >= 4.0.0` crash** — Fixed in Phase 3 by dropping passlib and calling `bcrypt` directly.
-
-**faster-whisper returns `[silence]` or decode errors** — ffmpeg not in PATH. Add `bin/` to Windows System PATH, restart terminal, verify with `ffmpeg -version`.
-
-**WebSocket closes with code `4001`** — Token expired. Log out and log back in.
-
-**Celery task not found on startup** — `score_answer_task` missing from `[tasks]` list. Ensure `celery_app.autodiscover_tasks(["app.tasks"])` is in `celery_app.py`, then restart Terminal 3.
-
-**Ollama timeout during scoring** — llama3.2 is slow on first run. `httpx` timeout is set to 120 seconds. If your machine is slow, increase it in `scoring.py`.
-
-**Safari mic doesn't work** — Safari doesn't support `audio/webm;codecs=opus`. Use Chrome, Firefox, or Edge.
 
 ---
 

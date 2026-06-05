@@ -480,54 +480,70 @@ export default function DashboardPage() {
             )}
 
             {/* Session rows */}
-            {!sessionsLoading && recentSessions.map((session) => (
-              <div key={session.id} className="dash-session-row">
-
-                {/* Left: domain + difficulty + date */}
-                <div className="dash-session-left">
-                  {/* Status dot */}
-                  <span
-                    className={`dash-session-status dash-session-status-${session.status}`}
-                    title={session.status}
-                    aria-label={`Status: ${session.status}`}
-                  />
-
-                  {/* Domain */}
-                  <span className="dash-session-domain">
-                    {session.domain.replace('_', ' ')}
-                  </span>
-
-                  {/* Difficulty badge */}
-                  <span className={`dash-session-diff dash-session-diff-${session.difficulty}`}>
-                    {session.difficulty}
-                  </span>
-
-                  {/* Date */}
-                  <span className="dash-session-date">
-                    {formatDate(session.started_at)}
-                  </span>
-                </div>
-
-                {/* Right: score */}
-                <div className="dash-session-right">
-                  {session.overall_score !== null ? (
+            {!sessionsLoading && recentSessions.map((session) => {
+              const completed = session.status === 'completed'
+              const sessionRow = (
+                <>
+                  {/* Left: domain + difficulty + date */}
+                  <div className="dash-session-left">
+                    {/* Status dot */}
                     <span
-                      className="dash-session-score"
-                      style={{ color: scoreColor(session.overall_score) }}
-                      aria-label={`Score: ${session.overall_score} out of 10`}
-                    >
-                      {session.overall_score}
-                      <span className="dash-session-score-denom">/10</span>
-                    </span>
-                  ) : (
-                    <span className="dash-session-score-null">
-                      {session.status === 'completed' ? 'no score' : 'in progress'}
-                    </span>
-                  )}
-                </div>
+                      className={`dash-session-status dash-session-status-${session.status}`}
+                      title={session.status}
+                      aria-label={`Status: ${session.status}`}
+                    />
 
-              </div>
-            ))}
+                    {/* Domain */}
+                    <span className="dash-session-domain">
+                      {session.domain.replace('_', ' ')}
+                    </span>
+
+                    {/* Difficulty badge */}
+                    <span className={`dash-session-diff dash-session-diff-${session.difficulty}`}>
+                      {session.difficulty}
+                    </span>
+
+                    {/* Date */}
+                    <span className="dash-session-date">
+                      {formatDate(session.started_at)}
+                    </span>
+                  </div>
+
+                  {/* Right: score */}
+                  <div className="dash-session-right">
+                    {session.overall_score !== null ? (
+                      <span
+                        className="dash-session-score"
+                        style={{ color: scoreColor(session.overall_score) }}
+                        aria-label={`Score: ${session.overall_score} out of 10`}
+                      >
+                        {session.overall_score}
+                        <span className="dash-session-score-denom">/10</span>
+                      </span>
+                    ) : (
+                      <span className="dash-session-score-null">
+                        {session.status === 'completed' ? 'no score' : 'in progress'}
+                      </span>
+                    )}
+                  </div>
+                </>
+              )
+
+              return completed ? (
+                <Link
+                  key={session.id}
+                  href={`/results/${session.id}`}
+                  className="dash-session-row dash-session-row-clickable"
+                  aria-label={`View results for session ${session.id}`}
+                >
+                  {sessionRow}
+                </Link>
+              ) : (
+                <div key={session.id} className="dash-session-row">
+                  {sessionRow}
+                </div>
+              )
+            })}
 
           </section>
 
