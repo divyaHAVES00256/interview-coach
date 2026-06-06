@@ -13,9 +13,10 @@ from app.models import Base
 # Routers 
 from app.api.v1.endpoints import auth
 from app.api.v1.endpoints import interviews
-from app.api.v1.endpoints import websocket
 from app.api.v1.endpoints import answers
 from app.api.v1.endpoints import results
+from app.api.v1.endpoints import analytics
+from app.api.v1.endpoints import websocket
 
 settings = get_settings()
 
@@ -99,6 +100,11 @@ app.include_router(
     results.router,
     prefix="/api/v1/results",
     tags=["Results"],
+)
+app.include_router(
+    analytics.router,
+    prefix="/api/v1/analytics",
+    tags=["Analytics"],
 )
 app.include_router(
     websocket.router,

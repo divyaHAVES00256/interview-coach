@@ -767,9 +767,9 @@ Docs at **`http://localhost:8000/docs`**
 | **Phase 3** | JWT auth, httpOnly cookies, BFF proxy, middleware route guards | ✅ Complete |
 | **Phase 4** | Interview session API, WebSocket audio pipeline, faster-whisper, live waveform UI | ✅ Complete |
 | **Phase 5** | Question display, transcript persistence, Ollama scoring, Celery pipeline, results page, live dashboard | ✅ Complete |
-| **Phase 6** | Multi-question sessions, FAISS vector search, vosk filler word detection | 🔜 Next |
-| **Phase 7** | Chart.js analytics dashboard, score trends, domain performance breakdown | ⏳ Planned |
-| **Phase 8** | Polish, error handling, performance tuning, deployment prep | ⏳ Planned |
+| **Phase 6** | Multi-question sessions, FAISS vector search, vosk filler word detection(later) | ✅ Complete |
+| **Phase 8** | Chart.js analytics dashboard, score trends, domain performance breakdown | 🔜 Next |
+| **Phase 9** | Polish, error handling, performance tuning, deployment prep | ⏳ Planned |
 
 ---
 
