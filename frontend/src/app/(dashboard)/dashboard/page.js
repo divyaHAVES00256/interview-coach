@@ -15,6 +15,7 @@ import {
   Star,
   Flame,
   LogOut,
+  BarChart2,
 } from 'lucide-react'
 
 import './dashboard.css'
@@ -228,13 +229,28 @@ export default function DashboardPage() {
             NAVBAR
         ══════════════════════════════════════════════════════════════════ */}
         <nav className="dash-nav" role="navigation" aria-label="Main navigation">
-
-          <Link href="/" className="dash-logo">
-            <div className="dash-logo-mark" aria-hidden="true">
-              <Zap size={16} strokeWidth={2.5} />
-            </div>
-            <span className="dash-logo-name">InterviewCoach</span>
-          </Link>
+          
+          {/* Logo */}
+            <Link href="/" style={{display:'flex',alignItems:'center',gap:10,textDecoration:'none'}}>
+              <div
+                style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: 9,
+                  background: 'linear-gradient(135deg,#00d4aa,#00ff87)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#020b0e'
+                }}
+              >
+                <Zap size={16} strokeWidth={2.5} />
+              </div>
+              <span style={{fontFamily:'var(--font-syne)',fontWeight:700,fontSize:14,
+                letterSpacing:'.02em',color:'var(--text)'}}>
+                Interview<span style={{color:'var(--accent)'}}>Coach</span>
+              </span>
+            </Link>
 
           <div className="dash-nav-right">
             <button
@@ -250,6 +266,16 @@ export default function DashboardPage() {
 
             <button
               className="dash-logout-btn"
+              onClick={() => router.push('/analytics')}
+              aria-label="View analytics"
+              title="Analytics"
+              style={{ color: 'var(--accent)' }}
+            >
+              <BarChart2 size={16} strokeWidth={2} />
+            </button>
+
+            <button
+              className="dash-logout-btn"
               onClick={handleLogout}
               disabled={isLoggingOut}
               aria-label="Logout"
@@ -260,7 +286,6 @@ export default function DashboardPage() {
 
             <div className="dash-user-chip" aria-label={`Signed in as ${displayName}`}>
               <div className="dash-avatar" aria-hidden="true">{initials}</div>
-              <span className="dash-user-name">{displayName}</span>
             </div>
           </div>
         </nav>

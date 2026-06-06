@@ -267,6 +267,8 @@
 .tag-ai    { background:rgba(0,212,170,.09); color:var(--accent); border:1px solid rgba(0,212,170,.28); }
 .tag-soon  { background:rgba(167,139,250,.09); color:#a78bfa; border:1px solid rgba(167,139,250,.28); }
 .tag-local { background:rgba(255,123,69,.09); color:#ff7b45; border:1px solid rgba(255,123,69,.28); }
+.tag-stats { background: rgba(6,182,212,.09);  color: #06b6d4;   border: 1px solid rgba(6,182,212,.28); }
+
 
 /* Step connector */
 .step-connector {

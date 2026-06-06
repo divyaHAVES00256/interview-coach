@@ -4,6 +4,7 @@
 import { Syne, DM_Sans, JetBrains_Mono } from 'next/font/google'
 import { useEffect } from 'react'
 import Link from 'next/link'
+import { Zap } from 'lucide-react';
 
 const syne = Syne({
   subsets: ['latin'],
@@ -55,9 +56,9 @@ const STEPS = [
 const FEATURES = [
   { icon: '⚡', tag: 'LIVE',   title: 'Real-time Transcription', desc: 'faster-whisper converts speech to text locally with under 5-second latency. Works fully offline.' },
   { icon: '🎯', tag: 'AI',    title: '4-Dimension Scoring',     desc: 'Technical accuracy, communication clarity, STAR method alignment, and answer completeness — all scored.' },
-  { icon: '🔍', tag: 'LIVE',  title: 'Filler Word Detection',   desc: 'vosk catches every "um", "uh", and "like" in real time. Eliminate verbal habits before the real interview.' },
+  { icon: '🔍', tag: 'SOON',  title: 'Filler Word Detection',   desc: 'vosk catches every "um", "uh", and "like" in real time. Eliminate verbal habits before the real interview.' },
   { icon: '🧠', tag: 'AI',    title: 'Ideal Answer Generation', desc: 'See exactly how a top candidate answers the same question. Benchmark yourself against the best.' },
-  { icon: '📊', tag: 'SOON',  title: 'Progress Analytics',      desc: 'Chart.js dashboards track your scores over time. Watch yourself get sharper every session.' },
+  { icon: '📊', tag: 'STATS',  title: 'Progress Analytics',      desc: 'Chart.js dashboards track your scores over time. Watch yourself get sharper every session.' },
   { icon: '🔒', tag: 'LOCAL', title: '100% Private & Local',    desc: 'Every model runs on your machine. Your answers never leave your computer. Zero cloud costs, forever.' },
 ]
 
@@ -134,10 +135,19 @@ export default function Home() {
 
             {/* Logo */}
             <Link href="/" style={{display:'flex',alignItems:'center',gap:10,textDecoration:'none'}}>
-              <div style={{width:34,height:34,borderRadius:9,
-                background:'linear-gradient(135deg,#00d4aa,#00ff87)',
-                display:'flex',alignItems:'center',justifyContent:'center'}}>
-                <span style={{fontFamily:'var(--font-mono)',fontSize:10,fontWeight:700,color:'#020b0e'}}>AI</span>
+              <div
+                style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: 9,
+                  background: 'linear-gradient(135deg,#00d4aa,#00ff87)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#020b0e'
+                }}
+              >
+                <Zap size={16} strokeWidth={2.5} />
               </div>
               <span style={{fontFamily:'var(--font-syne)',fontWeight:700,fontSize:14,
                 letterSpacing:'.02em',color:'var(--text)'}}>
@@ -346,6 +356,7 @@ export default function Home() {
                 const tagCls = {
                   LIVE: 'tag-live', AI: 'tag-ai',
                   SOON: 'tag-soon', LOCAL: 'tag-local',
+                  STATS: 'tag-stats'
                 }[f.tag]
                 return (
                   <div key={f.title} className="g-card" style={{borderRadius:20,padding:26}}>

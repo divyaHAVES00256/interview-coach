@@ -1,6 +1,8 @@
 // src/services/answers.js
 // BFF service layer for answer submission, score polling, and session results.
 
+const BASE = '/api/v1/answers'
+
 /**
  * Submit a recorded answer for a given question.
  * @param {number} questionId
@@ -9,7 +11,7 @@
  * @returns {Promise<{ answer_id: number, processing_status: string }>}
  */
 export async function submitAnswer(questionId, transcript, audioDuration) {
-  const res = await fetch('/api/v1/answers', {
+  const res = await fetch(`${BASE}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({

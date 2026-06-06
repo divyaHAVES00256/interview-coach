@@ -86,16 +86,16 @@ export default function LoginPage() {
       ════════════════════════════════════════════════════ */}
       <aside className="log-brand auth-desktop-only">
         {/* Logo */}
-        <Link href="/" className="log-brand-top" style={{ textDecoration: "none" }}>
-          <div className="auth-logo">
-            <div className="auth-logo-mark">
-              <Zap size={16} strokeWidth={2.5} />
-            </div>
-            <span 
-              className="auth-logo-accent">InterviewCoach
-            </span>
+        <div className="auth-fi-1">
+            <Link href="/" className="auth-logo">
+              <div className="auth-logo-mark">
+                <Zap size={16} strokeWidth={2.5} />
+              </div>
+              <span>
+                Interview<span className="auth-logo-accent">Coach</span>
+              </span>
+            </Link>
           </div>
-        </Link>
 
         {/* Headline */}
         <div className="log-headline">
@@ -135,14 +135,6 @@ export default function LoginPage() {
       ════════════════════════════════════════════════════ */}
       <main className="log-form-panel">
         <div className="log-card">
-
-          {/* Mobile-only logo */}
-          <Link href="/" className="auth-logo auth-mobile-only log-fi-1" style={{ marginBottom: "32px" }}>
-            <div className="auth-logo-mark">
-              <Zap size={16} strokeWidth={2.5} />
-            </div>
-            <span className="auth-logo-accent">InterviewCoach</span>
-          </Link>
 
           {/* Glass card */}
           <div className="auth-card">
