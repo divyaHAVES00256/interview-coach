@@ -9,7 +9,7 @@ and receive detailed AI-generated feedback — all running **100% locally**, no 
 
 <br/>
 
-![Phase](https://img.shields.io/badge/Phase-5%20Complete-success?style=for-the-badge&logo=checkmarx)
+![Phase](https://img.shields.io/badge/Phase-7%20Complete-success?style=for-the-badge&logo=checkmarx)
 ![Stack](https://img.shields.io/badge/Stack-Next.js%2014%20%2B%20FastAPI-blue?style=for-the-badge)
 ![DB](https://img.shields.io/badge/Database-PostgreSQL-336791?style=for-the-badge&logo=postgresql)
 ![AI](https://img.shields.io/badge/LLM-Ollama%20%28Local%29-black?style=for-the-badge)
@@ -258,6 +258,7 @@ alembic history           # full audit trail of every change
 │  POST   /api/v1/answers             Submit transcript → queue       │
 │  GET    /api/v1/answers/{id}/score  Poll scoring status             │
 │  GET    /api/v1/results/{id}        Full session results            │
+│  GET    /api/v1/analytics           Score trends + domain stats     │
 │  WS     /ws/interview/{id}          Binary audio → transcription    │
 │                                                                     │
 │  ┌─────────────────────────────────────────────────────────────┐    │
@@ -326,6 +327,8 @@ Score, strengths, improvements, ideal answer + follow-up question
 Results page shows full breakdown
        ↓
 Dashboard tracks all sessions with live stats + streak
+       ↓
+Analytics page shows score trends, skill radar, domain & difficulty charts
 ```
 
 Everything runs on your machine — no OpenAI, no cloud bills, no rate limits.
@@ -338,7 +341,7 @@ Everything runs on your machine — no OpenAI, no cloud bills, no rate limits.
 |---|---|---|
 | **Frontend** | Next.js 14 (App Router), JavaScript, Tailwind CSS | UI + routing |
 | **Component Library** | shadcn/ui | Pre-built accessible components |
-| **Charts** | Chart.js | Score analytics (Phase 7) |
+| **Charts** | Chart.js + react-chartjs-2 | Score analytics dashboard (Phase 7) |
 | **Backend** | Python FastAPI | REST API + WebSockets |
 | **Auth** | JWT (python-jose) + bcrypt | Stateless authentication |
 | **Task Queue** | Celery + Redis (Memurai on Windows) | Async scoring jobs |
@@ -375,6 +378,7 @@ interview-coach/
 │       │   │   └── register/page.js
 │       │   ├── (dashboard)/
 │       │   │   ├── dashboard/page.js       # Real stats + session history
+│       │   │   ├── analytics/page.js       # Score trends, domain & difficulty charts
 │       │   │   ├── interview/[id]/page.js  # Question + recorder + submit
 │       │   │   └── results/[id]/page.js    # Score breakdown page
 │       │   └── page.js                     # Landing page
@@ -388,7 +392,8 @@ interview-coach/
 │       │   └── auth.js                     # login(), register(), logout(), getMe()
 │       └── services/
 │           ├── interviews.js               # start, get, end, list sessions
-│           └── answers.js                  # submit, pollScore, getResults
+│           ├── answers.js                  # submit, pollScore, getResults
+│           └── analytics.js               # getAnalytics() — fetches /api/v1/analytics
 │
 └── backend/
     ├── main.py                       # All routers registered
@@ -401,7 +406,8 @@ interview-coach/
         │   ├── interviews.py         # list, start, get, end
         │   ├── websocket.py          # WS /ws/interview/{id}
         │   ├── answers.py            # submit transcript, poll score
-        │   └── results.py            # full session results
+        │   ├── results.py            # full session results
+        │   └── analytics.py         # GET /analytics — trend, domain, difficulty
         ├── core/
         │   ├── config.py             # Pydantic settings from .env
         │   └── security.py           # bcrypt + JWT
@@ -416,7 +422,8 @@ interview-coach/
         ├── schemas/
         │   ├── user.py
         │   ├── interview.py          # Session, Question, SessionListItem
-        │   └── scoring.py            # AnswerSubmit, ScoreResponse, Results
+        │   ├── scoring.py            # AnswerSubmit, ScoreResponse, Results
+        │   └── analytics.py         # AnalyticsResponse + sub-schemas
         ├── services/
         │   ├── question_bank.py      # Static question dict by domain
         │   └── scoring.py            # OllamaScorer — calls llama3.2
@@ -488,6 +495,7 @@ pip install -r requirements.txt
 ```bash
 cd frontend
 npm install
+npm install react-chartjs-2 chart.js
 ```
 
 ### 5. Database setup
@@ -532,11 +540,12 @@ ollama pull llama3.2
 |---|---|---|
 | Redis | `redis-cli ping` | `PONG` |
 | Celery | Terminal 3 on startup | `score_answer_task` in `[tasks]` list |
-| FastAPI | `http://localhost:8000/health` | `{"status":"ok","version":"0.5.0"}` |
+| FastAPI | `http://localhost:8000/health` | `{"status":"ok","version":"0.7.0"}` |
 | Ollama | `ollama list` | `llama3.2` in the list |
 | faster-whisper | Backend terminal on startup | Model loaded message |
 | Next.js | `http://localhost:3000` | Landing page |
 | Full flow | Record answer → stop → wait 3s | Score appears on results page |
+| Analytics | `http://localhost:3000/analytics` | Charts render after first scored session |
 
 ---
 
@@ -750,6 +759,12 @@ Docs at **`http://localhost:8000/docs`**
 |---|---|---|---|
 | `GET` | `/{session_id}` | ✅ | ✅ |
 
+### Analytics — `/api/v1/analytics`
+
+| Method | Endpoint | Auth | Notes |
+|---|---|---|---|
+| `GET` | `/` | ✅ | Returns score trends, domain & difficulty stats, dimension averages |
+
 ### WebSocket — `/ws`
 
 | Protocol | Endpoint | Auth |
@@ -767,9 +782,10 @@ Docs at **`http://localhost:8000/docs`**
 | **Phase 3** | JWT auth, httpOnly cookies, BFF proxy, middleware route guards | ✅ Complete |
 | **Phase 4** | Interview session API, WebSocket audio pipeline, faster-whisper, live waveform UI | ✅ Complete |
 | **Phase 5** | Question display, transcript persistence, Ollama scoring, Celery pipeline, results page, live dashboard | ✅ Complete |
-| **Phase 6** | Multi-question sessions, FAISS vector search, vosk filler word detection(later) | ✅ Complete |
-| **Phase 8** | Chart.js analytics dashboard, score trends, domain performance breakdown | 🔜 Next |
-| **Phase 9** | Polish, error handling, performance tuning, deployment prep | ⏳ Planned |
+| **Phase 6** | Multi-question sessions, FAISS vector search, vosk filler word detection | ✅ Complete |
+| **Phase 7** | Chart.js analytics dashboard, score trends, skill radar, domain & difficulty performance breakdown | ✅ Complete |
+| **Phase 8** | Polish, error handling, performance tuning, deployment prep | 🔜 Next |
+| **Phase 9** | Reserved | ⏳ Planned |
 
 ---
 
