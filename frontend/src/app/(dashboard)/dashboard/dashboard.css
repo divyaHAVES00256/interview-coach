@@ -122,8 +122,8 @@
   height: 68px;
   border-bottom: 1px solid var(--border);
   background: rgba(2, 11, 14, 0.72);
-  backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
   position: sticky;
   top: 0;
   z-index: 10;
@@ -314,8 +314,8 @@
 ════════════════════════════════════════════════════════════ */
 .dash-quickstart {
   background: rgba(6, 19, 26, 0.7);
-  backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
   border: 1px solid var(--border);
   border-radius: 24px;
   padding: 36px;
@@ -393,8 +393,8 @@
 }
 
 .dash-select {
-  appearance: none;
   -webkit-appearance: none;
+  appearance: none;
   background: rgba(2, 11, 14, 0.75)
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%234a7a72' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")
     no-repeat right 14px center;
@@ -547,8 +547,8 @@
 
 .dash-stat-card {
   background: rgba(6, 19, 26, 0.7);
-  backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
   border: 1px solid var(--border);
   border-radius: 18px;
   padding: 24px;
@@ -647,8 +647,8 @@
 ════════════════════════════════════════════════════════════ */
 .dash-sessions {
   background: rgba(6, 19, 26, 0.7);
-  backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
   border: 1px solid var(--border);
   border-radius: 24px;
   overflow: hidden;
