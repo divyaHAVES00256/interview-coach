@@ -46,7 +46,7 @@ and receive detailed AI-generated feedback — all running **100% locally**, no 
 
 ---
 
-### 🏆 Seven Engineering Decisions That Make Interviewers Notice
+### 🏆 Seven Important Engineering Decisions
 
 ---
 
