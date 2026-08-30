@@ -23,29 +23,6 @@ and receive detailed AI-generated feedback — all running **100% locally**, no 
 
 ---
 
-## ⭐ What Makes This Project Stand Out
-
-<br/>
-
-### 🆚 This Project vs. Every Other Interview Coach on GitHub
-
-| Feature | ❌ Typical Projects | ✅ This Project |
-|---|---|---|
-| **Auth token storage** | `localStorage` — vulnerable to XSS attacks | `httpOnly` cookies via BFF — JS can **never** read the token |
-| **Speech-to-text** | OpenAI Whisper API — costs money per minute | `faster-whisper` local — runs on CPU, **zero cost forever** |
-| **LLM for scoring** | GPT-4 API — requires API key, costs $$ | Ollama `llama3.2` — **fully local**, no key needed |
-| **Audio transport** | Base64-encoded JSON over REST — slow, bloated | **Binary WebSocket stream** — raw bytes, minimal overhead |
-| **Background jobs** | Synchronous — blocks the server during scoring | Celery + Redis — **async task queue**, non-blocking |
-| **DB schema changes** | `create_all()` — drops and recreates tables | **Alembic migrations** — versioned, reversible, production-safe |
-| **WebSocket auth** | Unprotected or skipped entirely | JWT verified **before** `accept()` — auth at handshake level |
-| **Scoring response** | Waits for LLM — hangs the API for 60–90 seconds | Fire-and-forget Celery task — **API returns in <200ms** |
-| **LLM output handling** | Crashes on malformed JSON | 3-layer fallback parser — **zero scoring crashes** |
-| **Cloud dependency** | Requires internet + API keys to run | **Zero external dependencies** — runs 100% offline after setup |
-
-<br/>
-
----
-
 ### 🏆 Seven Important Engineering Decisions
 
 ---
