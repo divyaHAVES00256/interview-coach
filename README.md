@@ -23,7 +23,7 @@ and receive detailed AI-generated feedback — all running **100% locally**, no 
 
 ---
 
-### 🏆 Seven Important Engineering Decisions
+### 🏆 Four Important Engineering Decisions
 
 ---
 
@@ -113,94 +113,6 @@ transcript = await loop.run_in_executor(
     chunk_index,
 )
 ```
-
-`run_in_executor` is the standard bridge between Python's async world and CPU-heavy synchronous code. Without it, transcription works in single-user testing and silently degrades under any real load.
-
----
-
-#### `5` &nbsp; 🧠 Fire-and-Forget LLM Scoring — API Returns in <200ms
-
-> [!NOTE]
-> Ollama takes 60–90 seconds to score an answer. Calling it synchronously inside an API handler would make the frontend hang with a spinner for over a minute. This project decouples submission from scoring completely using Celery.
-
-```
-POST /api/v1/answers  ← frontend submits transcript
-    ↓
-Answer row created  (processing_status = "pending")
-    ↓
-score_answer_task.delay(answer_id)   ← queued in Redis instantly
-    ↓
-HTTP 202 returned to frontend        ← in under 200ms
-
-Meanwhile, in the Celery worker:
-    Answer loaded → status = "scoring"
-        → OllamaScorer.score(transcript, question)
-            → Ollama llama3.2 generates JSON evaluation
-                → Score row written to DB
-                    → status = "scored"
-
-Frontend polls GET /api/v1/answers/{id}/score every 3 seconds
-    → returns Score when ready, status string while waiting
-```
-
-The API response time and the LLM inference time are completely independent. The user sees a "Scoring…" indicator, not a frozen browser tab.
-
-**Files:** `backend/app/tasks/scoring_task.py` · `backend/app/services/scoring.py` · `backend/app/api/v1/endpoints/answers.py`
-
----
-
-#### `6` &nbsp; 🛡️ Fault-Tolerant LLM JSON Parsing — Three Recovery Layers
-
-> [!NOTE]
-> LLMs don't reliably return clean JSON. They wrap it in markdown code fences, add preamble text, include trailing commas, or hallucinate extra keys. This project's `OllamaScorer` never crashes — it always returns a usable score.
-
-```python
-def _safe_parse_json(self, raw: str) -> dict | None:
-    # Layer 1: direct parse — works when LLM is well-behaved
-    try:
-        return json.loads(raw)
-    except json.JSONDecodeError:
-        pass
-
-    # Layer 2: strip ```json ... ``` markdown fences
-    cleaned = re.sub(r"```json|```", "", raw).strip()
-    try:
-        return json.loads(cleaned)
-    except json.JSONDecodeError:
-        pass
-
-    # Layer 3: regex — find the first {...} block in the response
-    match = re.search(r"\{.*\}", cleaned, re.DOTALL)
-    if match:
-        try:
-            return json.loads(match.group())
-        except json.JSONDecodeError:
-            pass
-
-    return None  # all layers failed → _fallback_score() is used
-```
-
-Additionally: all numeric scores are clamped to 0.0–10.0, and `overall_score` is **always recalculated locally** as `round((ta + cl + sa + co) / 4, 1)` — the model's arithmetic is never trusted.
-
-**File:** `backend/app/services/scoring.py`
-
----
-
-#### `7` &nbsp; 🗄️ Production Database Migrations — Not `create_all()`
-
-> [!NOTE]
-> **`Base.metadata.create_all()` is fine for a 2-hour tutorial.** For any project you plan to iterate on, it's a trap — it silently does nothing if the table already exists, can't rename or add columns, and has no rollback. This project uses Alembic from day one.
-
-```bash
-# Every schema change is a versioned, reviewable migration file
-alembic revision --autogenerate -m "add_filler_word_count_to_answers"
-
-alembic upgrade head      # apply forward
-alembic downgrade -1      # roll back safely if something breaks
-alembic history           # full audit trail of every change
-```
-
-5 tables. All versioned. The entire schema can be reproduced on any machine with a single command. No manual SQL. No data loss from accidental drops.
 
 ---
 
